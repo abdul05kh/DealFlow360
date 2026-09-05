@@ -187,28 +187,28 @@ graph TD
 ### Automated Test Suite Baseline
 **175 / 175 Tests Passing · 17 Test Files (100% Pass Rate)**
 
-| Test Category | File Count / Scope | Key Coverage Areas |
+| Test Suite Category | File Scope | Key Policy & System Verification Coverage |
 | :--- | :---: | :--- |
-| **Governance & MRI** | 4 Files | Discount ceilings, category rules, MRI calculation, target threshold updates |
-| **Fulfillment & Concurrency**| 2 Files | Warehouse allocation, stock deduction, SLA checks, concurrent reservation locks |
-| **Hybrid Billing & Payments**| 1 File | One-time invoices, quarterly/monthly subscriptions, payment `ISSUED` $\rightarrow$ `PAID`, cancellation, credit notes |
-| **Customer Negotiation** | 1 File | Counter-offer evaluation, manager counter-offer approval, quote state preservation |
-| **Security & Auth (RBAC)** | 2 Files | Safe password hashes, route gating, customer tenant isolation, anti-tampering |
-| **Master Data & Admin** | 1 File | Product search, tier limit updates, role assignment |
-| **Performance Smoke Suite**| 1 File | Bounded product search, auth latency, quote evaluation speed |
-| **Foundation & System Rules**| 5 Files | Domain math, risk engine, margin calculator, recommendation engine |
+| **Discount Governance & MRI** | 4 Files | Tier ceilings (`BRONZE` $\rightarrow$ `ENTERPRISE`), category limits, MRI calculation, target threshold updates |
+| **Warehouse Fulfillment & Concurrency**| 2 Files | Multi-hub allocation, stock deduction, SLA checks, database transaction locks under load |
+| **Hybrid Billing, Payments & Subscriptions**| 1 File | One-time fees vs. subscriptions, payment `ISSUED` $\rightarrow$ `PAID`, cancellation, credit note caps |
+| **Customer Negotiation Portal** | 1 File | Counter-offer re-evaluation, manager counter-offer decision, quote state preservation |
+| **Security & Authorization (RBAC)** | 2 Files | Safe password hashes, role gating, customer tenant isolation, anti-tampering |
+| **Master Data & Admin Controls** | 1 File | Bounded product search (230 products), customer tier limit updates, operator role assignment |
+| **Performance Smoke Suite** | 1 File | Search response latency, auth check speed, quote evaluation execution timing |
+| **Foundation & Domain Rules** | 5 Files | Integer minor-unit math, risk engine scoring, margin calculator, recommendation engine |
 
 ### Verified Local Latency Metrics
 
-| Operation | Verified Local Latency | Performance Note |
-| :--- | ---: | :--- |
-| **Product Search** (230 products) | **~56 ms** | Results bounded to maximum 5 visible items with scrollable UI |
-| **Customer List** (6 customers) | **~38 ms** | Fast tenant lookup across enterprise accounts |
-| **Quote Evaluation** | **~30 ms** | Real-time discount governance and MRI calculation |
-| **User Authentication** | **~91 ms** | Firebase Admin SDK token verification |
-| **Fulfillment Evaluation** | **~8.5 ms** | Multi-warehouse stock availability and SLA calculation |
+| Core Operation | Dataset Scale | Verified Local Latency | Performance Engineering Note |
+| :--- | :--- | ---: | :--- |
+| **Product Search** | 230 Catalog Products | **~56 ms** | Bounded search results (max 5 visible items rendered with scrollable UI) |
+| **Customer List** | 6 Seeded Enterprise Accounts | **~38 ms** | Indexed database query for rapid tenant lookup |
+| **Quote Evaluation** | Real-time Governance Engine | **~30 ms** | Authoritative server-side discount policy & MRI calculation |
+| **User Authentication** | Firebase Admin SDK + JWT | **~91 ms** | Token verification and user role extraction |
+| **Fulfillment Evaluation** | 3 Distribution Hubs | **~8.5 ms** | SLA feasibility check and warehouse inventory allocation |
 
-> *Note: These are local smoke/verification measurements on standard developer hardware, not universal production benchmarks.*
+> *Note: These latency numbers are verified local smoke/performance measurements executed on standard developer hardware, not universal production SLA guarantees.*
 
 ---
 
