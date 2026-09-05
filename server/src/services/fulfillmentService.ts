@@ -51,14 +51,20 @@ export class FulfillmentService {
       throw new NotFoundError('Quote', quoteId);
     }
 
-    const productIds = Array.from(new Set(quote.lines.map((l) => l.productId)));
+    const productIds = Array.from(new Set(quote.lines.map((l: { productId: string }) => l.productId)));
 
     const stocks = await prisma.inventoryStock.findMany({
       where: { productId: { in: productIds } },
       include: { warehouse: true },
     });
 
-    const candidateInventory: FulfillmentCandidateWarehouse[] = stocks.map((s) => ({
+    const candidateInventory: FulfillmentCandidateWarehouse[] = stocks.map((s: {
+      warehouseId: string;
+      productId: string;
+      warehouse: { code: string; name: string; baseShippingCost: number; priority: number };
+      quantityOnHand: number;
+      quantityReserved: number;
+    }) => ({
       warehouseId: s.warehouseId,
       warehouseCode: s.warehouse.code,
       warehouseName: s.warehouse.name,
@@ -68,7 +74,11 @@ export class FulfillmentService {
       priority: s.warehouse.priority,
     }));
 
-    const fulfillmentLines: FulfillmentLineInput[] = quote.lines.map((l) => ({
+    const fulfillmentLines: FulfillmentLineInput[] = quote.lines.map((l: {
+      id: string;
+      productId: string;
+      quantity: number;
+    }) => ({
       quoteLineId: l.id,
       productId: l.productId,
       requestedQuantity: l.quantity,
@@ -127,15 +137,21 @@ export class FulfillmentService {
     }
 
     // 3. Execute Transactional Allocation & Reservation
-    return prisma.$transaction(async (tx) => {
-      const productIds = Array.from(new Set(quote.lines.map((l) => l.productId)));
+    return prisma.$transaction(async (tx: any) => {
+      const productIds = Array.from(new Set(quote.lines.map((l: { productId: string }) => l.productId)));
 
       const stocks = await tx.inventoryStock.findMany({
         where: { productId: { in: productIds } },
         include: { warehouse: true },
       });
 
-      const candidateInventory: FulfillmentCandidateWarehouse[] = stocks.map((s) => ({
+      const candidateInventory: FulfillmentCandidateWarehouse[] = stocks.map((s: {
+        warehouseId: string;
+        productId: string;
+        warehouse: { code: string; name: string; baseShippingCost: number; priority: number };
+        quantityOnHand: number;
+        quantityReserved: number;
+      }) => ({
         warehouseId: s.warehouseId,
         warehouseCode: s.warehouse.code,
         warehouseName: s.warehouse.name,
@@ -145,7 +161,11 @@ export class FulfillmentService {
         priority: s.warehouse.priority,
       }));
 
-      const fulfillmentLines: FulfillmentLineInput[] = quote.lines.map((l) => ({
+      const fulfillmentLines: FulfillmentLineInput[] = quote.lines.map((l: {
+        id: string;
+        productId: string;
+        quantity: number;
+      }) => ({
         quoteLineId: l.id,
         productId: l.productId,
         requestedQuantity: l.quantity,
@@ -157,7 +177,7 @@ export class FulfillmentService {
       // Handle Manual Overrides if provided
       if (manualOverrides && manualOverrides.length > 0) {
         for (const override of manualOverrides) {
-          const targetLine = quote.lines.find((l) => l.id === override.quoteLineId);
+          const targetLine = quote.lines.find((l: { id: string; productId: string; quantity: number; product: { name: string } }) => l.id === override.quoteLineId);
           if (!targetLine) {
             throw new DomainValidationError(`Invalid quoteLineId ${override.quoteLineId} in manual override.`);
           }
@@ -210,7 +230,7 @@ export class FulfillmentService {
           backorders += item.allocatedQuantity;
         } else if (item.warehouseId) {
           if (!usedWhMap.has(item.warehouseId)) {
-            const wh = stocks.find((s) => s.warehouseId === item.warehouseId)?.warehouse;
+            const wh = stocks.find((s: { warehouseId: string; warehouse: any }) => s.warehouseId === item.warehouseId)?.warehouse;
             usedWhMap.set(item.warehouseId, wh ? wh.baseShippingCost : item.shippingCost);
           }
         }
