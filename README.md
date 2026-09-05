@@ -51,13 +51,15 @@ By enforcing policy server-side via Node.js/Express and Prisma, DealFlow360 prev
 
 ## The Problem
 
-| Business Risk | What Goes Wrong in Standard Sales Tools |
-| :--- | :--- |
-| **Uncontrolled Discounting** | Reps issue steep discounts to close deals fast, eroding gross margin without manager visibility. |
-| **Static Ceiling Flaws** | Standard discount limits ignore customer tier, product category, and volume context. |
-| **Fulfillment Blind Spots** | Quotes get approved for items out of stock or impossible to deliver within customer SLA. |
-| **Negotiation Drift** | Verbal price adjustments during negotiation bypass commercial policy and auditing. |
-| **Billing Complexity** | Mixing one-time hardware fees with recurring subscriptions causes run-rate errors and rounding drift. |
+In modern B2B enterprise sales, revenue leakage occurs silently across fragmented disconnects between sales, finance, and operations:
+
+| Commercial Risk | Traditional Sales System Failure Mode | DealFlow360 Impact |
+| :--- | :--- | :--- |
+| **Uncontrolled Discounting** | Sales reps issue steep line-item discounts to close deals fast, eroding gross margin without manager visibility. | Server-side policy validation blocks unapproved discount overrides before quote issuance. |
+| **Static Ceiling Flaws** | Standard CPQ systems use flat discount limits that ignore customer tier, product margin, and deal volume context. | Hierarchical governance evaluates tier ceilings (`BRONZE` $\rightarrow$ `ENTERPRISE`) and product category rules dynamically. |
+| **Fulfillment Blind Spots** | Quotes get approved for out-of-stock items or delivery schedules that violate customer SLAs. | Multi-warehouse inventory engine checks stock availability across hubs (`HUB_EAST`, `HUB_WEST`) and acquires stock locks. |
+| **Negotiation Drift** | Verbal price adjustments during price negotiations occur off-system, bypassing commercial policy and audit logs. | Customer negotiation portal evaluates counter-offers server-side and routes policy deviations for re-approval. |
+| **Billing Complexity** | Mixing one-time equipment fees with recurring subscriptions leads to run-rate errors and floating-point currency drift. | Integer minor-unit arithmetic separates one-time invoices (`ISSUED` $\rightarrow$ `PAID`) from recurring subscription run rates. |
 
 ---
 
