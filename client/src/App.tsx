@@ -11,6 +11,7 @@ import {
   FulfillmentCockpit,
   LoginModal,
   AdminCockpit,
+  CustomerPortalView,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
 import {
@@ -57,8 +58,14 @@ export default function App() {
     refreshMasterData,
   } = useQuoteGovernance();
 
-  const [activeTab, setActiveTab] = useState<'governance' | 'fulfillment' | 'admin'>('governance');
+  const [activeTab, setActiveTab] = useState<'governance' | 'fulfillment' | 'admin' | 'customer'>('governance');
   const [approvalReason, setApprovalReason] = useState<string>('');
+
+  React.useEffect(() => {
+    if (currentRole === 'CUSTOMER' && activeTab !== 'customer') {
+      setActiveTab('customer');
+    }
+  }, [currentRole]);
 
   const isSalesRep = currentRole === 'SALES_REP';
   const isSalesManager = currentRole === 'SALES_MANAGER';
@@ -342,11 +349,13 @@ export default function App() {
             activeQuote={savedQuote}
             onSwitchPersona={setRole}
           />
-        ) : (
+        ) : activeTab === 'admin' ? (
           <AdminCockpit
             currentRole={currentRole}
             onMasterDataChanged={refreshMasterData}
           />
+        ) : (
+          <CustomerPortalView apiConnected={apiConnected} />
         )}
       </main>
     </div>

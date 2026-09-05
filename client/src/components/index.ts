@@ -12,3 +12,4 @@ export { RecommendedAllocationCard } from './RecommendedAllocationCard';
 export { FulfillmentAuditTrailCard } from './FulfillmentAuditTrailCard';
 export { LoginModal } from './LoginModal';
 export { AdminCockpit } from './AdminCockpit';
+export { CustomerPortalView } from './CustomerPortal/CustomerPortalView';

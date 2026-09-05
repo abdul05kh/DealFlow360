@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { config } from './config/index';
 import { authRouter } from './routes/authRoutes';
+import { customerRouter } from './routes/customerRoutes';
 import { fulfillmentRouter } from './routes/fulfillmentRoutes';
 import { healthRouter } from './routes/health';
 import { masterDataRouter } from './routes/masterDataRoutes';
@@ -18,6 +19,7 @@ app.use('/api/v1', authRouter);
 app.use('/api/v1', masterDataRouter);
 app.use('/api/v1', fulfillmentRouter);
 app.use('/api/v1/quotes', quoteRouter);
+app.use('/api/v1/customer', customerRouter);
 
 // Safe Global Error Handler (No stack trace or internal database leaks exposed)
 app.use(

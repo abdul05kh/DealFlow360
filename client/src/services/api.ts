@@ -7,6 +7,8 @@ import {
   CreateProductCategoryPayloadDTO,
   CreateProductPayloadDTO,
   CustomerDTO,
+  CustomerNegotiationDTO,
+  CustomerQuoteDTO,
   CustomerTierDTO,
   DemoRole,
   EvaluateQuotePayloadDTO,
@@ -17,8 +19,10 @@ import {
   ManualOverrideItemDTO,
   ProductCategoryDTO,
   ProductDTO,
+  RespondNegotiationPayloadDTO,
   SavedQuoteDTO,
   SignupPayloadDTO,
+  SubmitNegotiationPayloadDTO,
   UpdateCustomerPayloadDTO,
   UpdateCustomerTierPayloadDTO,
   UpdateProductCategoryPayloadDTO,
@@ -350,6 +354,50 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<FulfillmentPlanDTO>(res);
+  }
+
+  /** P0-4 Customer Portal API Endpoints */
+
+  async getCustomerQuotes(): Promise<CustomerQuoteDTO[]> {
+    const res = await fetch(`${API_BASE}/customer/quotes`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<CustomerQuoteDTO[]>(res);
+  }
+
+  async getCustomerQuoteById(quoteId: string): Promise<CustomerQuoteDTO> {
+    const res = await fetch(`${API_BASE}/customer/quotes/${encodeURIComponent(quoteId)}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<CustomerQuoteDTO>(res);
+  }
+
+  async submitNegotiation(
+    quoteId: string,
+    payload: SubmitNegotiationPayloadDTO
+  ): Promise<CustomerQuoteDTO> {
+    const res = await fetch(`${API_BASE}/customer/quotes/${encodeURIComponent(quoteId)}/negotiate`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerQuoteDTO>(res);
+  }
+
+  async respondToNegotiation(
+    quoteId: string,
+    negotiationId: string,
+    payload: RespondNegotiationPayloadDTO
+  ): Promise<SavedQuoteDTO> {
+    const res = await fetch(
+      `${API_BASE}/quotes/${encodeURIComponent(quoteId)}/negotiations/${encodeURIComponent(negotiationId)}/respond`,
+      {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload),
+      }
+    );
+    return this.handleResponse<SavedQuoteDTO>(res);
   }
 }
 

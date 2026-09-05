@@ -19,14 +19,15 @@ model CustomerTier {
 }
 
 model Customer {
-  id        String       @id @default(uuid())
+  id        String             @id @default(uuid())
   name      String
   tierId    String
-  tier      CustomerTier @relation(fields: [tierId], references: [id])
-  currency  String       @default("INR")
-  status    String       @default("ACTIVE")
+  tier      CustomerTier       @relation(fields: [tierId], references: [id])
+  currency  String             @default("INR")
+  status    String             @default("ACTIVE")
   quotes    Quote[]
   users     User[]
+  negotiations QuoteNegotiation[]
 }
 
 model ProductCategory {
@@ -55,16 +56,17 @@ model Product {
 }
 
 model User {
-  id               String            @id @default(uuid())
-  name             String
-  email            String            @unique
-  passwordHash     String            @default("")
-  role             String
-  customerId       String?
-  customer         Customer?         @relation(fields: [customerId], references: [id])
-  quotesCreated    Quote[]           @relation("QuotesCreated")
-  approvalAssigned ApprovalRequest[] @relation("AssignedApprover")
-  approvalActioned ApprovalRequest[] @relation("ActionedBy")
+  id                    String             @id @default(uuid())
+  name                  String
+  email                 String             @unique
+  passwordHash          String             @default("")
+  role                  String
+  customerId            String?
+  customer              Customer?          @relation(fields: [customerId], references: [id])
+  quotesCreated         Quote[]            @relation("QuotesCreated")
+  approvalAssigned      ApprovalRequest[]  @relation("AssignedApprover")
+  approvalActioned      ApprovalRequest[]  @relation("ActionedBy")
+  negotiationsSubmitted QuoteNegotiation[] @relation("NegotiationsSubmitted")
 }
 
 model DiscountPolicy {
@@ -110,24 +112,54 @@ model Quote {
   lines                QuoteLine[]
   approvalRequests     ApprovalRequest[]
   fulfillmentPlan      FulfillmentPlan?
+  negotiations         QuoteNegotiation[]
 }
 
 model QuoteLine {
-  id              String            @id @default(uuid())
-  quoteId         String
-  quote           Quote             @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product           @relation(fields: [productId], references: [id])
-  quantity        Int
-  unitPrice       Float
-  unitCost        Float
-  discountPercent Float
-  discountAmount  Float
-  subtotal        Float
-  netTotal        Float
-  lineCost        Float
-  lineMargin      Float
+  id               String                 @id @default(uuid())
+  quoteId          String
+  quote            Quote                  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product                @relation(fields: [productId], references: [id])
+  quantity         Int
+  unitPrice        Float
+  unitCost         Float
+  discountPercent  Float
+  discountAmount   Float
+  subtotal         Float
+  netTotal         Float
+  lineCost         Float
+  lineMargin       Float
   fulfillmentItems FulfillmentItem[]
+  negotiationLines QuoteNegotiationLine[]
+}
+
+model QuoteNegotiation {
+  id                   String                 @id @default(uuid())
+  quoteId              String
+  quote                Quote                  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  customerId           String
+  customer             Customer               @relation(fields: [customerId], references: [id])
+  submittedByUserId    String
+  submittedByUser      User                   @relation("NegotiationsSubmitted", fields: [submittedByUserId], references: [id])
+  round                Int                    @default(1)
+  status               String                 // 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+  customerNote         String?
+  managerReason        String?                // Internal manager notes ONLY
+  customerResponseNote String?                // Customer-safe response note
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  lines                QuoteNegotiationLine[]
+}
+
+model QuoteNegotiationLine {
+  id                String           @id @default(uuid())
+  negotiationId     String
+  negotiation       QuoteNegotiation @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+  quoteLineId       String
+  quoteLine         QuoteLine        @relation(fields: [quoteLineId], references: [id])
+  requestedDiscount Float
+  customerNote      String?
 }
 
 model ApprovalRequest {

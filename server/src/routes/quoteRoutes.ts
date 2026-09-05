@@ -6,6 +6,7 @@ import {
   CreateQuoteSchema,
   EvaluateQuoteSchema,
 } from '../schemas/quoteSchema';
+import { respondNegotiationSchema } from '../schemas/negotiationSchema';
 import { quoteService } from '../services/quoteService';
 
 export const quoteRouter = Router();
@@ -145,6 +146,48 @@ quoteRouter.get(
       res.status(200).json(quote);
     } catch (error: any) {
       res.status(error.name === 'NotFoundError' ? 404 : 400).json({
+        error: error.name || 'BadRequest',
+        message: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/v1/quotes/:quoteId/negotiations/:negotiationId/respond
+ * Responds to a customer negotiation (APPROVE or REJECT). Requires SALES_MANAGER role.
+ */
+quoteRouter.post(
+  '/:quoteId/negotiations/:negotiationId/respond',
+  authMiddleware(['SALES_MANAGER']),
+  validatePayload(respondNegotiationSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const quoteId = req.params.quoteId as string;
+      const negotiationId = req.params.negotiationId as string;
+      const userId = req.user?.id || 'mgr_1';
+      const userRole = req.user?.role as 'SALES_MANAGER';
+
+      const result = await quoteService.respondToNegotiation(
+        quoteId,
+        negotiationId,
+        userId,
+        userRole,
+        'Morgan Sales Manager',
+        req.body
+      );
+
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error.name === 'NotFoundError') {
+        res.status(404).json({ error: 'NotFound', message: error.message });
+        return;
+      }
+      if (error.name === 'InvalidStateTransitionError') {
+        res.status(409).json({ error: 'Conflict', message: error.message });
+        return;
+      }
+      res.status(400).json({
         error: error.name || 'BadRequest',
         message: error.message,
       });

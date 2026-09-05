@@ -389,3 +389,62 @@ export interface UpdateProductCategoryPayloadDTO {
   name?: string;
   maxCategoryDiscount?: number;
 }
+
+/** P0-4 Customer Negotiation DTOs (Sanitized, zero financial leak) */
+
+export interface CustomerQuoteLineDTO {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  offeredUnitPrice: number;
+  offeredDiscountPercent: number;
+  offeredLineTotal: number;
+}
+
+export interface CustomerNegotiationLineDTO {
+  quoteLineId: string;
+  requestedDiscountPercent: number;
+  customerNote?: string | null;
+}
+
+export interface CustomerNegotiationDTO {
+  id: string;
+  round: number;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  customerNote?: string | null;
+  customerResponseNote?: string | null;
+  createdAt: string;
+  lines: CustomerNegotiationLineDTO[];
+}
+
+export interface CustomerQuoteDTO {
+  id: string;
+  quoteNumber: string;
+  status: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  totalOfferedGross: number;
+  totalOfferedDiscount: number;
+  totalNetRevenue: number;
+  lines: CustomerQuoteLineDTO[];
+  activeNegotiation?: CustomerNegotiationDTO | null;
+  negotiationHistory: CustomerNegotiationDTO[];
+}
+
+export interface SubmitNegotiationPayloadDTO {
+  customerNote?: string;
+  lines: {
+    quoteLineId: string;
+    requestedDiscount: number;
+    customerNote?: string;
+  }[];
+}
+
+export interface RespondNegotiationPayloadDTO {
+  action: 'APPROVE' | 'REJECT';
+  managerReason?: string;
+  customerResponseNote?: string;
+}

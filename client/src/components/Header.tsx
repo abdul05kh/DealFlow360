@@ -6,8 +6,8 @@ interface HeaderProps {
   currentRole: DemoRole;
   onRoleChange: (role: DemoRole) => void;
   apiConnected: boolean;
-  activeTab?: 'governance' | 'fulfillment' | 'admin';
-  onTabChange?: (tab: 'governance' | 'fulfillment' | 'admin') => void;
+  activeTab?: 'governance' | 'fulfillment' | 'admin' | 'customer';
+  onTabChange?: (tab: 'governance' | 'fulfillment' | 'admin' | 'customer') => void;
   authUser?: AuthUserDTO | null;
   onOpenAuthModal?: () => void;
 }
@@ -76,6 +76,17 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               3. Master Data Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('customer')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                activeTab === 'customer'
+                  ? 'bg-cyan-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              4. Customer Portal
             </button>
           </div>
         )}
@@ -173,6 +184,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Shield className="w-3.5 h-3.5" />
             System Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => onRoleChange('CUSTOMER')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+              currentRole === 'CUSTOMER'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            Customer (Acme)
           </button>
         </div>
       </div>
