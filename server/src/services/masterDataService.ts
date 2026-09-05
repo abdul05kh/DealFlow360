@@ -12,6 +12,57 @@ import {
 
 export class MasterDataService {
   /**
+   * Retrieves all active customers with tier information.
+   */
+  async getAllCustomers(): Promise<CustomerDomain[]> {
+    const customers = await prisma.customer.findMany({
+      where: { status: 'ACTIVE' },
+      include: { tier: true },
+    });
+
+    return customers.map((c) => ({
+      id: c.id,
+      name: c.name,
+      tierId: c.tierId,
+      tier: {
+        id: c.tier.id,
+        code: c.tier.code,
+        name: c.tier.name,
+        maxOverallDiscount: c.tier.maxOverallDiscount,
+        minMarginThreshold: c.tier.minMarginThreshold,
+      },
+      currency: c.currency,
+      status: c.status,
+    }));
+  }
+
+  /**
+   * Retrieves all active products with category information.
+   */
+  async getAllProducts(): Promise<ProductDomain[]> {
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: { category: true },
+    });
+
+    return products.map((p) => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      categoryId: p.categoryId,
+      category: {
+        id: p.category.id,
+        code: p.category.code,
+        name: p.category.name,
+        maxCategoryDiscount: p.category.maxCategoryDiscount,
+      },
+      sellingPrice: p.sellingPrice,
+      costPrice: p.costPrice,
+      isActive: p.isActive,
+    }));
+  }
+
+  /**
    * Retrieves customer with tier information mapped to domain model.
    */
   async getCustomerWithTier(customerId: string): Promise<CustomerDomain | null> {

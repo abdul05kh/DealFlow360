@@ -433,4 +433,41 @@ describe('Flow A REST API & Anti-Tampering Integration Tests', () => {
     expect(getRes.body.id).toBe(quoteId);
     expect(getRes.body.auditHistory.length).toBeGreaterThanOrEqual(1);
   });
+
+  // 20. GET /api/v1/customers - Read-only master data active customers
+  it('20. GET /api/v1/customers - returns list of active customers with tier information', async () => {
+    const res = await request
+      .get('/api/v1/customers')
+      .set('X-Demo-Role', 'SALES_REP');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(3);
+    expect(res.body[0].tier).toBeDefined();
+    expect(res.body[0].tier.maxOverallDiscount).toBeDefined();
+  });
+
+  // 21. GET /api/v1/products - Read-only master data active catalog products
+  it('21. GET /api/v1/products - returns list of active catalog products with selling and cost prices', async () => {
+    const res = await request
+      .get('/api/v1/products')
+      .set('X-Demo-Role', 'SALES_REP');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(6);
+    expect(res.body[0].sellingPrice).toBeDefined();
+    expect(res.body[0].costPrice).toBeDefined();
+    expect(res.body[0].category.maxCategoryDiscount).toBeDefined();
+  });
+
+  // 22. Anti-Tampering: Rejects write methods on master data endpoints
+  it('22. Anti-Tampering: rejects POST write attempt on /api/v1/customers (404 Not Found)', async () => {
+    const res = await request
+      .post('/api/v1/customers')
+      .set('X-Demo-Role', 'SALES_REP')
+      .send({ name: 'Fake Malicious Customer' });
+
+    expect(res.status).toBe(404);
+  });
 });
