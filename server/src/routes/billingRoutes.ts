@@ -100,3 +100,37 @@ billingRouter.get(
     }
   }
 );
+
+/**
+ * POST /api/v1/invoices/:invoiceId/pay
+ * Records payment for an issued invoice (ISSUED -> PAID).
+ */
+billingRouter.post(
+  '/invoices/:invoiceId/pay',
+  authMiddleware(['OPERATIONS_MANAGER', 'ADMIN', 'SALES_MANAGER', 'CUSTOMER']),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const invoiceId = req.params.invoiceId as string;
+      const actorId = req.user?.id || 'sys_1';
+      const actorName = req.user?.id || 'Authorized User';
+      const userRole = req.user?.role || 'OPERATIONS_MANAGER';
+      const userCustomerId = req.user?.customerId;
+
+      const invoice = await billingService.payInvoice(
+        invoiceId,
+        actorId,
+        actorName,
+        userRole,
+        userCustomerId
+      );
+
+      res.status(200).json(invoice);
+    } catch (error: any) {
+      const status = error.statusCode || (error.name === 'NotFoundError' ? 404 : 400);
+      res.status(status).json({
+        error: error.name || 'BadRequest',
+        message: error.message,
+      });
+    }
+  }
+);

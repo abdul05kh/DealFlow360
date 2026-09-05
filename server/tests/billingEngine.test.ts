@@ -487,4 +487,160 @@ describe('Increment 4 — Hybrid Billing & Subscription Engine Tests', () => {
     const dbQuote = await prisma.quote.findUniqueOrThrow({ where: { id: quoteId } });
     expect(dbQuote.status).toBe('BILLING_CREATED');
   });
+
+  it('16. Records payment for an ISSUED invoice (ISSUED -> PAID) and creates RECORD_PAYMENT audit log', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    // Record Payment
+    const payRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${opsToken}`);
+
+    expect(payRes.status).toBe(200);
+    expect(payRes.body.status).toBe('PAID');
+
+    // Verify DB state
+    const dbInv = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
+    expect(dbInv.status).toBe('PAID');
+
+    // Verify Audit Event created
+    const auditEvents = await prisma.auditEvent.findMany({
+      where: { entityType: 'INVOICE', entityId: invoiceId, action: 'RECORD_PAYMENT' },
+    });
+    expect(auditEvents.length).toBeGreaterThan(0);
+  });
+
+  it('17. Rejects duplicate payment on an already PAID invoice with HTTP 409', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    // First payment succeeds
+    await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${opsToken}`);
+
+    // Duplicate payment fails with 409
+    const dupRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${opsToken}`);
+
+    expect(dupRes.status).toBe(409);
+    expect(dupRes.body.message).toContain('already been paid');
+  });
+
+  it('18. Rejects payment recording by unauthorized roles (403)', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    // Sales Rep attempting to record payment is rejected with 403
+    const unauthorizedRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${salesRepToken}`);
+
+    expect(unauthorizedRes.status).toBe(403);
+  });
+
+  it('19. Denies cross-customer invoice payment attempts (404/403)', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    // Different customer attempting to pay another customer's invoice
+    const crossCustRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${otherCustomerToken}`);
+
+    expect(crossCustRes.status).toBe(404);
+  });
+
+  it('20. Payment preserves exact invoice minor unit monetary total', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 2, discountPercent: 10 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const originalTotalMinor = billingRes.body.invoice.totalMinor;
+    const invoiceId = billingRes.body.invoice.id;
+
+    const payRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/pay`)
+      .set('Authorization', `Bearer ${opsToken}`);
+
+    expect(payRes.status).toBe(200);
+    expect(payRes.body.totalMinor).toBe(originalTotalMinor);
+  });
 });

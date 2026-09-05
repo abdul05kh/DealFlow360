@@ -239,6 +239,115 @@ export class BillingService {
   }
 
   /**
+   * Records payment for an issued invoice within a single Prisma transaction.
+   * Validates authorization, state transition (ISSUED -> PAID), idempotency, and tenant isolation.
+   */
+  async payInvoice(
+    invoiceId: string,
+    actorId: string,
+    actorName: string,
+    userRole: string,
+    userCustomerId?: string | null
+  ): Promise<InvoiceDTO> {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        customer: true,
+        lines: { include: { product: true } },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundError('Invoice', invoiceId);
+    }
+
+    // 1. Role Authorization Checks
+    const allowedRoles = ['OPERATIONS_MANAGER', 'ADMIN', 'SALES_MANAGER', 'CUSTOMER'];
+    if (!allowedRoles.includes(userRole)) {
+      const err: any = new Error(`Forbidden: Role ${userRole} is not authorized to record invoice payments.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2. Tenant Isolation Check
+    if (userRole === 'CUSTOMER') {
+      if (!userCustomerId || invoice.customerId !== userCustomerId) {
+        throw new NotFoundError('Invoice', invoiceId);
+      }
+    }
+
+    // 3. State Machine & Idempotency Validation
+    if (invoice.status === 'PAID') {
+      const err: any = new Error(`Invoice ${invoice.invoiceNumber} has already been paid.`);
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (invoice.status !== 'ISSUED') {
+      const err: any = new Error(`Cannot process payment for invoice in status '${invoice.status}'. Only ISSUED invoices can be paid.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 4. Transactional State Update & Audit Logging
+    const updatedInvoice = await prisma.$transaction(async (tx) => {
+      const paidInv = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: { status: 'PAID' },
+        include: {
+          customer: true,
+          lines: { include: { product: true } },
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          entityType: 'INVOICE',
+          entityId: invoiceId,
+          actorId,
+          actorName,
+          action: 'RECORD_PAYMENT',
+          newStateJson: JSON.stringify({
+            invoiceId,
+            invoiceNumber: paidInv.invoiceNumber,
+            totalMinor: paidInv.totalMinor,
+            status: 'PAID',
+          }),
+        },
+      });
+
+      return paidInv;
+    });
+
+    return {
+      id: updatedInvoice.id,
+      invoiceNumber: updatedInvoice.invoiceNumber,
+      quoteId: updatedInvoice.quoteId,
+      customerId: updatedInvoice.customerId,
+      customerName: updatedInvoice.customer.name,
+      status: updatedInvoice.status,
+      currency: updatedInvoice.currency,
+      subtotalMinor: updatedInvoice.subtotalMinor,
+      discountMinor: updatedInvoice.discountMinor,
+      totalMinor: updatedInvoice.totalMinor,
+      createdAt: updatedInvoice.createdAt.toISOString(),
+      lines: updatedInvoice.lines.map((l) => ({
+        id: l.id,
+        quoteLineId: l.quoteLineId,
+        productId: l.productId,
+        productName: l.product?.name || 'Product',
+        sku: l.product?.sku || '',
+        description: l.description,
+        quantity: l.quantity,
+        unitPriceMinor: l.unitPriceMinor,
+        discountPercent: l.discountPercent,
+        discountAmountMinor: l.discountAmountMinor,
+        netTotalMinor: l.netTotalMinor,
+      })),
+    };
+  }
+
+  /**
    * Retrieves full billing summary for a quote.
    */
   async getBillingSummaryByQuoteId(

@@ -505,6 +505,14 @@ export class APIClient {
     });
     return this.handleResponse<{ invoices: InvoiceDTO[]; subscriptions: SubscriptionDTO[] }>(res);
   }
+
+  async payInvoice(invoiceId: string): Promise<InvoiceDTO> {
+    const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/pay`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<InvoiceDTO>(res);
+  }
 }
 
 export const apiClient = new APIClient();

@@ -19,6 +19,7 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
   const [summary, setSummary] = useState<BillingSummaryDTO | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [generating, setGenerating] = useState<boolean>(false);
+  const [paying, setPaying] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBillingSummary = async () => {
@@ -55,6 +56,30 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
       setError(err?.message || 'Failed to generate billing');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    if (!summary?.invoice?.id) return;
+    try {
+      setPaying(true);
+      setError(null);
+      const updatedInvoice = await apiClient.payInvoice(summary.invoice.id);
+      setSummary((prev) =>
+        prev
+          ? {
+              ...prev,
+              invoice: updatedInvoice,
+            }
+          : null
+      );
+      if (onBillingGenerated) {
+        onBillingGenerated();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to record payment');
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -174,7 +199,13 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
                   <FileText className="w-3.5 h-3.5 text-blue-400" />
                   <span>Invoice: {summary.invoice.invoiceNumber}</span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                    summary.invoice.status === 'PAID'
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold'
+                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                  }`}
+                >
                   {summary.invoice.status}
                 </span>
               </div>
@@ -186,6 +217,28 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
                   </div>
                 ))}
               </div>
+              {summary.invoice.status === 'ISSUED' && (
+                <div className="pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handleRecordPayment}
+                    disabled={paying}
+                    className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-[0.99]"
+                  >
+                    {paying ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin text-white" />
+                        <span>Recording Payment...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Record Payment</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
