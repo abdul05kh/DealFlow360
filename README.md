@@ -255,14 +255,21 @@ Default local development uses safe local defaults configured in `.env` (SQLite 
 
 ---
 
-## Engineering Trade-Offs
+## Engineering Trade-Offs & Scope Decisions
 
-To maximize reviewer confidence and financial arithmetic determinism, specific deliberate scope choices were made:
+To maximize reviewer confidence, financial arithmetic determinism, and system stability during hackathon evaluation, specific architectural decisions were made:
 
-- **Integer Minor-Unit Money Arithmetic**: All financial amounts (`totalMinor`, `amountMinor`, `runRateMinor`) are strictly stored as integer minor units (e.g., ₹100.00 stored as `10000`). Floating-point currency math was intentionally forbidden to eliminate rounding drift.
-- **Internal Payment & Credit Workflows**: Invoices transition `ISSUED` $\rightarrow$ `PAID` via authenticated internal service endpoints. Credit notes are issued transactionally against invoice balances. External payment gateways (Stripe) and external bank refund webhooks were excluded to eliminate third-party API availability risks.
-- **Fixed Subscription Schedules**: Added support for `MONTHLY`, `QUARTERLY` (3-month), and `YEARLY` intervals. Mid-cycle proration formulas were intentionally excluded to preserve billing snapshot determinism.
-- **SQLite Database**: Selected for zero-config portability and instant GitHub CI execution without requiring external database container services.
+### 🪙 Integer Minor-Unit Money Arithmetic
+All monetary values (`totalMinor`, `amountMinor`, `runRateMinor`) are strictly computed and stored as integer minor units (e.g., ₹100.00 stored as `10000`). Floating-point currency math was intentionally forbidden across backend services to eliminate floating-point rounding drift.
+
+### 🗄️ SQLite Database Selection
+SQLite 3 was chosen for zero-configuration portability, instant GitHub Actions CI workflow setup, and fast transactional locks without external database container service overhead.
+
+### 💳 Internal Payment & Credit Note Workflows
+Invoices transition `ISSUED` $\rightarrow$ `PAID` via authenticated internal service calls. Credit notes are issued transactionally against invoice balances. External payment gateways (Stripe) and external bank refund webhooks were excluded to eliminate third-party API availability risks.
+
+### 📅 Fixed Recurring Subscription Schedules
+Supports `MONTHLY`, `QUARTERLY` (3-month), and `YEARLY` intervals. Mid-cycle proration math was intentionally excluded to preserve billing snapshot determinism and protect core financial accounting integrity.
 
 ---
 
