@@ -1,35 +1,69 @@
 import React from 'react';
-import { Shield, UserCheck, ShieldAlert, Cpu } from 'lucide-react';
+import { Shield, UserCheck, ShieldAlert, Cpu, Truck } from 'lucide-react';
 import { DemoRole } from '../types/api';
 
 interface HeaderProps {
   currentRole: DemoRole;
   onRoleChange: (role: DemoRole) => void;
   apiConnected: boolean;
+  activeTab?: 'governance' | 'fulfillment';
+  onTabChange?: (tab: 'governance' | 'fulfillment') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
   onRoleChange,
   apiConnected,
+  activeTab = 'governance',
+  onTabChange,
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-30 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-900/20 border border-blue-400/30">
-          <Shield className="w-6 h-6" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-white">DealFlow360</h1>
-            <span className="bg-blue-950 text-blue-400 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-blue-800/50">
-              Flow A Engine
-            </span>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-900/20 border border-blue-400/30">
+            <Shield className="w-6 h-6" />
           </div>
-          <p className="text-xs text-slate-400 font-medium">
-            Commercial Governance Cockpit
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold tracking-tight text-white">DealFlow360</h1>
+              <span className="bg-blue-950 text-blue-400 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-blue-800/50">
+                Flow A + Flow B Engine
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-medium">
+              Commercial Governance & Operational Fulfillment Cockpit
+            </p>
+          </div>
         </div>
+
+        {/* View Switcher Tabs */}
+        {onTabChange && (
+          <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 ml-4">
+            <button
+              type="button"
+              onClick={() => onTabChange('governance')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                activeTab === 'governance'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              1. Commercial Governance
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('fulfillment')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                activeTab === 'fulfillment'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              2. Fulfillment Cockpit
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -73,6 +107,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             Morgan (Sales Manager)
+          </button>
+          <button
+            type="button"
+            onClick={() => onRoleChange('OPERATIONS_MANAGER')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+              currentRole === 'OPERATIONS_MANAGER'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            Operations Lead
           </button>
         </div>
       </div>

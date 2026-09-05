@@ -6,3 +6,7 @@ export { GovernanceRiskRadar } from './GovernanceRiskRadar';
 export { RecommendationsCard } from './RecommendationsCard';
 export { AuditTrailDrawer } from './AuditTrailDrawer';
 export { QuickDemoPresetBar } from './QuickDemoPresetBar';
+export { FulfillmentCockpit } from './FulfillmentCockpit';
+export { WarehouseAvailabilityCard } from './WarehouseAvailabilityCard';
+export { RecommendedAllocationCard } from './RecommendedAllocationCard';
+export { FulfillmentAuditTrailCard } from './FulfillmentAuditTrailCard';
