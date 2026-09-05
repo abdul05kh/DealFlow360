@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 
+export type UserRole = 'SALES_REP' | 'SALES_MANAGER' | 'OPERATIONS_MANAGER';
+
 export interface DemoUserIdentity {
   id: string;
-  role: 'SALES_REP' | 'SALES_MANAGER';
+  role: UserRole;
 }
 
 declare global {
@@ -13,13 +15,17 @@ declare global {
   }
 }
 
-export const authMiddleware = (allowedRoles?: ('SALES_REP' | 'SALES_MANAGER')[]) => {
+export const authMiddleware = (allowedRoles?: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const roleHeader = req.header('X-Demo-Role');
     const userIdHeader = req.header('X-Demo-User-Id');
 
-    const role = (roleHeader as 'SALES_REP' | 'SALES_MANAGER') || 'SALES_REP';
-    const userId = userIdHeader || (role === 'SALES_MANAGER' ? 'mgr_1' : 'rep_1');
+    const role = (roleHeader as UserRole) || 'SALES_REP';
+    let defaultUserId = 'rep_1';
+    if (role === 'SALES_MANAGER') defaultUserId = 'mgr_1';
+    if (role === 'OPERATIONS_MANAGER') defaultUserId = 'ops_1';
+
+    const userId = userIdHeader || defaultUserId;
 
     req.user = {
       id: userId,
