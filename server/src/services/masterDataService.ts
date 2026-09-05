@@ -67,13 +67,25 @@ interface CrossSellRuleRecord {
   minMarginPercent: number;
 }
 
+import {
+  CreateCustomerInput,
+  CreateCustomerTierInput,
+  CreateProductCategoryInput,
+  CreateProductInput,
+  UpdateCustomerInput,
+  UpdateCustomerTierInput,
+  UpdateProductCategoryInput,
+  UpdateProductInput,
+} from '../schemas/masterDataSchema';
+
 export class MasterDataService {
   /**
-   * Retrieves all active customers with tier information.
+   * Retrieves all customers with tier information (optionally including inactive).
    */
-  async getAllCustomers(): Promise<CustomerDomain[]> {
+  async getAllCustomers(includeInactive = false): Promise<CustomerDomain[]> {
+    const whereCondition = includeInactive ? {} : { status: 'ACTIVE' };
     const customers = await prisma.customer.findMany({
-      where: { status: 'ACTIVE' },
+      where: whereCondition,
       include: { tier: true },
     });
 
@@ -94,11 +106,12 @@ export class MasterDataService {
   }
 
   /**
-   * Retrieves all active products with category information.
+   * Retrieves all products with category information (optionally including inactive).
    */
-  async getAllProducts(): Promise<ProductDomain[]> {
+  async getAllProducts(includeInactive = false): Promise<ProductDomain[]> {
+    const whereCondition = includeInactive ? {} : { isActive: true };
     const products = await prisma.product.findMany({
-      where: { isActive: true },
+      where: whereCondition,
       include: { category: true },
     });
 
@@ -266,6 +279,291 @@ export class MasterDataService {
       name: user.name,
       email: user.email,
       role: user.role as 'SALES_REP' | 'SALES_MANAGER' | 'FINANCE_APPROVER',
+    };
+  }
+
+  // --- ADMIN MUTATION METHODS ---
+
+  async createProduct(input: CreateProductInput): Promise<ProductDomain> {
+    const existing = await prisma.product.findUnique({ where: { sku: input.sku } });
+    if (existing) {
+      const err: any = new Error(`Product with SKU '${input.sku}' already exists`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const category = await prisma.productCategory.findUnique({ where: { id: input.categoryId } });
+    if (!category) {
+      const err: any = new Error(`Product category with ID '${input.categoryId}' does not exist`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const created = await prisma.product.create({
+      data: {
+        sku: input.sku,
+        name: input.name,
+        categoryId: input.categoryId,
+        sellingPrice: input.sellingPrice,
+        costPrice: input.costPrice,
+        isActive: input.isActive ?? true,
+      },
+      include: { category: true },
+    });
+
+    return {
+      id: created.id,
+      sku: created.sku,
+      name: created.name,
+      categoryId: created.categoryId,
+      category: {
+        id: created.category.id,
+        code: created.category.code,
+        name: created.category.name,
+        maxCategoryDiscount: created.category.maxCategoryDiscount,
+      },
+      sellingPrice: created.sellingPrice,
+      costPrice: created.costPrice,
+      isActive: created.isActive,
+    };
+  }
+
+  async updateProduct(id: string, input: UpdateProductInput): Promise<ProductDomain> {
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      const err: any = new Error(`Product with ID '${id}' not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (input.sku && input.sku !== existing.sku) {
+      const skuCheck = await prisma.product.findUnique({ where: { sku: input.sku } });
+      if (skuCheck) {
+        const err: any = new Error(`Product with SKU '${input.sku}' already exists`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    if (input.categoryId) {
+      const category = await prisma.productCategory.findUnique({ where: { id: input.categoryId } });
+      if (!category) {
+        const err: any = new Error(`Product category with ID '${input.categoryId}' does not exist`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: input,
+      include: { category: true },
+    });
+
+    return {
+      id: updated.id,
+      sku: updated.sku,
+      name: updated.name,
+      categoryId: updated.categoryId,
+      category: {
+        id: updated.category.id,
+        code: updated.category.code,
+        name: updated.category.name,
+        maxCategoryDiscount: updated.category.maxCategoryDiscount,
+      },
+      sellingPrice: updated.sellingPrice,
+      costPrice: updated.costPrice,
+      isActive: updated.isActive,
+    };
+  }
+
+  async getAllCustomerTiers(): Promise<CustomerTierDomain[]> {
+    const tiers = await prisma.customerTier.findMany();
+    return tiers.map((t) => ({
+      id: t.id,
+      code: t.code,
+      name: t.name,
+      maxOverallDiscount: t.maxOverallDiscount,
+      minMarginThreshold: t.minMarginThreshold,
+    }));
+  }
+
+  async createCustomerTier(input: CreateCustomerTierInput): Promise<CustomerTierDomain> {
+    const existing = await prisma.customerTier.findUnique({ where: { code: input.code } });
+    if (existing) {
+      const err: any = new Error(`Customer Tier with code '${input.code}' already exists`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const created = await prisma.customerTier.create({ data: input });
+    return {
+      id: created.id,
+      code: created.code,
+      name: created.name,
+      maxOverallDiscount: created.maxOverallDiscount,
+      minMarginThreshold: created.minMarginThreshold,
+    };
+  }
+
+  async updateCustomerTier(id: string, input: UpdateCustomerTierInput): Promise<CustomerTierDomain> {
+    const existing = await prisma.customerTier.findUnique({ where: { id } });
+    if (!existing) {
+      const err: any = new Error(`Customer Tier with ID '${id}' not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (input.code && input.code !== existing.code) {
+      const codeCheck = await prisma.customerTier.findUnique({ where: { code: input.code } });
+      if (codeCheck) {
+        const err: any = new Error(`Customer Tier with code '${input.code}' already exists`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    const updated = await prisma.customerTier.update({
+      where: { id },
+      data: input,
+    });
+
+    return {
+      id: updated.id,
+      code: updated.code,
+      name: updated.name,
+      maxOverallDiscount: updated.maxOverallDiscount,
+      minMarginThreshold: updated.minMarginThreshold,
+    };
+  }
+
+  async createCustomer(input: CreateCustomerInput): Promise<CustomerDomain> {
+    const tier = await prisma.customerTier.findUnique({ where: { id: input.tierId } });
+    if (!tier) {
+      const err: any = new Error(`Customer Tier with ID '${input.tierId}' does not exist`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const created = await prisma.customer.create({
+      data: {
+        name: input.name,
+        tierId: input.tierId,
+        currency: input.currency || 'INR',
+        status: input.status || 'ACTIVE',
+      },
+      include: { tier: true },
+    });
+
+    return {
+      id: created.id,
+      name: created.name,
+      tierId: created.tierId,
+      tier: {
+        id: created.tier.id,
+        code: created.tier.code,
+        name: created.tier.name,
+        maxOverallDiscount: created.tier.maxOverallDiscount,
+        minMarginThreshold: created.tier.minMarginThreshold,
+      },
+      currency: created.currency,
+      status: created.status,
+    };
+  }
+
+  async updateCustomer(id: string, input: UpdateCustomerInput): Promise<CustomerDomain> {
+    const existing = await prisma.customer.findUnique({ where: { id } });
+    if (!existing) {
+      const err: any = new Error(`Customer with ID '${id}' not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (input.tierId) {
+      const tier = await prisma.customerTier.findUnique({ where: { id: input.tierId } });
+      if (!tier) {
+        const err: any = new Error(`Customer Tier with ID '${input.tierId}' does not exist`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    const updated = await prisma.customer.update({
+      where: { id },
+      data: input,
+      include: { tier: true },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      tierId: updated.tierId,
+      tier: {
+        id: updated.tier.id,
+        code: updated.tier.code,
+        name: updated.tier.name,
+        maxOverallDiscount: updated.tier.maxOverallDiscount,
+        minMarginThreshold: updated.tier.minMarginThreshold,
+      },
+      currency: updated.currency,
+      status: updated.status,
+    };
+  }
+
+  async getAllProductCategories(): Promise<ProductCategoryDomain[]> {
+    const categories = await prisma.productCategory.findMany();
+    return categories.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      maxCategoryDiscount: c.maxCategoryDiscount,
+    }));
+  }
+
+  async createProductCategory(input: CreateProductCategoryInput): Promise<ProductCategoryDomain> {
+    const existing = await prisma.productCategory.findUnique({ where: { code: input.code } });
+    if (existing) {
+      const err: any = new Error(`Product category with code '${input.code}' already exists`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const created = await prisma.productCategory.create({ data: input });
+    return {
+      id: created.id,
+      code: created.code,
+      name: created.name,
+      maxCategoryDiscount: created.maxCategoryDiscount,
+    };
+  }
+
+  async updateProductCategory(id: string, input: UpdateProductCategoryInput): Promise<ProductCategoryDomain> {
+    const existing = await prisma.productCategory.findUnique({ where: { id } });
+    if (!existing) {
+      const err: any = new Error(`Product category with ID '${id}' not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (input.code && input.code !== existing.code) {
+      const codeCheck = await prisma.productCategory.findUnique({ where: { code: input.code } });
+      if (codeCheck) {
+        const err: any = new Error(`Product category with code '${input.code}' already exists`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    const updated = await prisma.productCategory.update({
+      where: { id },
+      data: input,
+    });
+
+    return {
+      id: updated.id,
+      code: updated.code,
+      name: updated.name,
+      maxCategoryDiscount: updated.maxCategoryDiscount,
     };
   }
 }
