@@ -1,0 +1,81 @@
+import React from 'react';
+import { Shield, UserCheck, ShieldAlert, Cpu } from 'lucide-react';
+import { DemoRole } from '../types/api';
+
+interface HeaderProps {
+  currentRole: DemoRole;
+  onRoleChange: (role: DemoRole) => void;
+  apiConnected: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  currentRole,
+  onRoleChange,
+  apiConnected,
+}) => {
+  return (
+    <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-30 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-900/20 border border-blue-400/30">
+          <Shield className="w-6 h-6" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight text-white">DealFlow360</h1>
+            <span className="bg-blue-950 text-blue-400 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-blue-800/50">
+              Flow A Engine
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 font-medium">
+            Commercial Governance Cockpit
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        {/* Status Indicator */}
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs">
+          <Cpu className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-slate-400">Server Engine:</span>
+          <span className="flex items-center gap-1.5 font-medium text-slate-200">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                apiConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+            {apiConnected ? 'Connected (Authoritative)' : 'Connecting...'}
+          </span>
+        </div>
+
+        {/* Persona Switcher */}
+        <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
+          <span className="text-xs text-slate-400 px-2 font-medium">Demo Persona:</span>
+          <button
+            type="button"
+            onClick={() => onRoleChange('SALES_REP')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+              currentRole === 'SALES_REP'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            Alex (Sales Rep)
+          </button>
+          <button
+            type="button"
+            onClick={() => onRoleChange('SALES_MANAGER')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+              currentRole === 'SALES_MANAGER'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            Morgan (Sales Manager)
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+};
