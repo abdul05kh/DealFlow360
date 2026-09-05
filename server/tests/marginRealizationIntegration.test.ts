@@ -189,9 +189,9 @@ describe('P0-3 Dynamic Margin Realization (MRI) Integration & Security Tests', (
     const customer = await prisma.customer.findUnique({ where: { id: 'cust_acme_101' } });
     const product = await prisma.product.findUnique({ where: { id: 'prod_server_01' } });
 
-    // Set Gold Tier discount ceiling to 12.0%
-    await prisma.customerTier.updateMany({
-      where: { code: 'GOLD' },
+    // Set Customer's Tier discount ceiling to 12.0%
+    await prisma.customerTier.update({
+      where: { id: customer!.tierId },
       data: { maxOverallDiscount: 12.0 },
     });
 
