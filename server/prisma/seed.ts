@@ -1,9 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding DealFlow360 Master Data...');
+  const defaultPasswordHash = bcrypt.hashSync('Password123!', 10);
 
   // 1. Clean existing records
   await prisma.auditEvent.deleteMany();
@@ -239,12 +241,13 @@ async function main() {
     ],
   });
 
-  // 8. Demo Users
+  // 8. Demo & Auth Users
   const salesRep = await prisma.user.create({
     data: {
       id: 'rep_1',
       name: 'Alex Sales Rep',
-      email: 'alex.rep@dealflow360.com',
+      email: 'salesrep@example.com',
+      passwordHash: defaultPasswordHash,
       role: 'SALES_REP',
     },
   });
@@ -253,8 +256,40 @@ async function main() {
     data: {
       id: 'mgr_1',
       name: 'Morgan Sales Manager',
-      email: 'morgan.manager@dealflow360.com',
+      email: 'salesmanager@example.com',
+      passwordHash: defaultPasswordHash,
       role: 'SALES_MANAGER',
+    },
+  });
+
+  const opsManager = await prisma.user.create({
+    data: {
+      id: 'ops_1',
+      name: 'Sam Operations Manager',
+      email: 'operations@example.com',
+      passwordHash: defaultPasswordHash,
+      role: 'OPERATIONS_MANAGER',
+    },
+  });
+
+  const adminUser = await prisma.user.create({
+    data: {
+      id: 'admin_1',
+      name: 'System Admin',
+      email: 'admin@example.com',
+      passwordHash: defaultPasswordHash,
+      role: 'ADMIN',
+    },
+  });
+
+  const customerUser = await prisma.user.create({
+    data: {
+      id: 'cust_user_1',
+      name: 'Acme Customer User',
+      email: 'customer@example.com',
+      passwordHash: defaultPasswordHash,
+      role: 'CUSTOMER',
+      customerId: acme.id,
     },
   });
 
