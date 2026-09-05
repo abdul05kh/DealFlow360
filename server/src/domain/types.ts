@@ -167,6 +167,61 @@ export interface RecommendationResult {
   projectedMarginPercent: number;
 }
 
+// 7. Fulfillment Domain Types
+export interface WarehouseDomain {
+  id: string;
+  code: string;
+  name: string;
+  location: string;
+  baseShippingCost: number;
+  priority: number;
+}
+
+export interface InventoryStockDomain {
+  id: string;
+  warehouseId: string;
+  productId: string;
+  quantityOnHand: number;
+  quantityReserved: number;
+  availableQuantity: number;
+}
+
+export interface FulfillmentCandidateWarehouse {
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  productId: string;
+  availableQuantity: number;
+  baseShippingCost: number;
+  priority: number;
+}
+
+export interface FulfillmentLineInput {
+  quoteLineId: string;
+  productId: string;
+  requestedQuantity: number;
+}
+
+export interface FulfillmentItemDecision {
+  quoteLineId: string;
+  productId: string;
+  warehouseId: string | null;
+  warehouseCode: string | null;
+  allocatedQuantity: number;
+  status: 'FULFILLED' | 'BACKORDERED';
+  shippingCost: number;
+}
+
+export type FulfillmentPlanStatus = 'ALLOCATED' | 'PARTIALLY_FULFILLED_BACKORDER';
+
+export interface FulfillmentEvaluationResult {
+  items: FulfillmentItemDecision[];
+  totalShipments: number;
+  totalFulfillmentCost: number;
+  backorderCount: number;
+  status: FulfillmentPlanStatus;
+}
+
 // Custom Domain Validation Error
 export class DomainValidationError extends Error {
   constructor(message: string) {
