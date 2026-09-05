@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import {
   ApprovalRuleDomain,
@@ -10,6 +11,12 @@ import {
   UserDomain,
 } from '../domain/types';
 
+type CustomerWithTier = Prisma.CustomerGetPayload<{ include: { tier: true } }>;
+type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
+type DiscountPolicyPayload = Prisma.DiscountPolicyGetPayload<{}>;
+type ApprovalRulePayload = Prisma.ApprovalRuleGetPayload<{}>;
+type CrossSellRulePayload = Prisma.CrossSellRuleGetPayload<{}>;
+
 export class MasterDataService {
   /**
    * Retrieves all active customers with tier information.
@@ -20,7 +27,7 @@ export class MasterDataService {
       include: { tier: true },
     });
 
-    return customers.map((c) => ({
+    return customers.map((c: CustomerWithTier) => ({
       id: c.id,
       name: c.name,
       tierId: c.tierId,
@@ -45,7 +52,7 @@ export class MasterDataService {
       include: { category: true },
     });
 
-    return products.map((p) => ({
+    return products.map((p: ProductWithCategory) => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
@@ -157,7 +164,7 @@ export class MasterDataService {
    */
   async getAllDiscountPolicies(): Promise<DiscountPolicyDomain[]> {
     const policies = await prisma.discountPolicy.findMany();
-    return policies.map((p) => ({
+    return policies.map((p: DiscountPolicyPayload) => ({
       id: p.id,
       name: p.name,
       tierId: p.tierId,
@@ -173,7 +180,7 @@ export class MasterDataService {
    */
   async getAllApprovalRules(): Promise<ApprovalRuleDomain[]> {
     const rules = await prisma.approvalRule.findMany();
-    return rules.map((r) => ({
+    return rules.map((r: ApprovalRulePayload) => ({
       id: r.id,
       name: r.name,
       minRiskLevel: r.minRiskLevel as 'LOW' | 'MEDIUM' | 'HIGH',
@@ -187,7 +194,7 @@ export class MasterDataService {
    */
   async getCrossSellRules(): Promise<CrossSellRuleDomain[]> {
     const rules = await prisma.crossSellRule.findMany();
-    return rules.map((r) => ({
+    return rules.map((r: CrossSellRulePayload) => ({
       id: r.id,
       triggerProductId: r.triggerProductId,
       recommendedProductId: r.recommendedProductId,
