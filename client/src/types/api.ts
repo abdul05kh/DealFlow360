@@ -157,6 +157,16 @@ export interface RecommendationResultDTO {
   projectedMarginPercent: number;
 }
 
+export interface MarginRealizationDTO {
+  netRevenue: number;
+  estimatedCost: number;
+  realizedMarginPercent: number;
+  baseTargetMarginPercent: number;
+  volumeFactorPercent: number;
+  requiredTargetMarginPercent: number;
+  marginRealizationPercent: number;
+}
+
 export interface FullQuoteEvaluationDTO {
   customer: {
     id: string;
@@ -164,6 +174,7 @@ export interface FullQuoteEvaluationDTO {
     tier: string;
   };
   financials: FinancialSummaryDTO;
+  marginRealization?: MarginRealizationDTO;
   governance: DiscountGovernanceResultDTO;
   risk: RiskEvaluationResultDTO;
   decision: ApprovalDecisionDTO;

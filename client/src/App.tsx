@@ -317,6 +317,7 @@ export default function App() {
             <div className="lg:col-span-7 space-y-6">
               <CommercialEconomics
                 financials={evaluation?.financials || null}
+                marginRealization={evaluation?.marginRealization || null}
                 isEvaluating={isEvaluating}
               />
 

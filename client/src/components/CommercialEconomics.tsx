@@ -1,14 +1,16 @@
 import React from 'react';
-import { DollarSign, ShieldCheck, TrendingUp, TrendingDown, Percent, Layers } from 'lucide-react';
-import { FinancialSummaryDTO } from '../types/api';
+import { DollarSign, ShieldCheck, TrendingUp, TrendingDown, Layers, Target, Award } from 'lucide-react';
+import { FinancialSummaryDTO, MarginRealizationDTO } from '../types/api';
 
 interface CommercialEconomicsProps {
   financials: FinancialSummaryDTO | null;
+  marginRealization?: MarginRealizationDTO | null;
   isEvaluating?: boolean;
 }
 
 export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
   financials,
+  marginRealization,
   isEvaluating = false,
 }) => {
   const formatCurrency = (val: number) =>
@@ -34,6 +36,10 @@ export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
 
   const isMarginHealthy = financials.marginPercentage >= 30;
 
+  const mriVal = marginRealization?.marginRealizationPercent ?? 0;
+  const isMriOptimal = mriVal >= 100;
+  const isMriAcceptable = mriVal >= 80;
+
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4 relative overflow-hidden">
       {isEvaluating && (
@@ -48,7 +54,7 @@ export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
           <DollarSign className="w-4 h-4 text-emerald-400" />
-          <span>Live Deal Economics</span>
+          <span>Live Deal Economics & MRI</span>
         </div>
         <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
           <ShieldCheck className="w-3 h-3" />
@@ -90,7 +96,7 @@ export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
         </div>
       </div>
 
-      {/* Gross Margin & Margin % Highlight */}
+      {/* Gross Margin & Realized Margin % */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
         <div>
           <div className="text-xs text-slate-400 font-medium">Authoritative Gross Margin</div>
@@ -100,7 +106,7 @@ export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
         </div>
 
         <div className="text-right">
-          <div className="text-xs text-slate-400 font-medium">Margin Realization</div>
+          <div className="text-xs text-slate-400 font-medium">Realized Margin</div>
           <div
             className={`text-lg font-black flex items-center justify-end gap-1 ${
               isMarginHealthy ? 'text-emerald-400' : 'text-amber-400'
@@ -115,6 +121,61 @@ export const CommercialEconomics: React.FC<CommercialEconomicsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* P0-3 Server-Authoritative Margin Realization Index (MRI) Card */}
+      {marginRealization && (
+        <div className="bg-gradient-to-br from-purple-950/40 via-slate-950 to-slate-900 p-4 rounded-xl border border-purple-800/60 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold text-purple-200 uppercase tracking-wider">
+                Margin Realization Index (MRI)
+              </span>
+            </div>
+            <span
+              className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${
+                isMriOptimal
+                  ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                  : isMriAcceptable
+                  ? 'bg-purple-950 text-purple-300 border-purple-800'
+                  : 'bg-amber-950 text-amber-400 border-amber-800'
+              }`}
+            >
+              {isMriOptimal ? 'OPTIMAL (≥100%)' : isMriAcceptable ? 'ACCEPTABLE (≥80%)' : 'BELOW TARGET (<80%)'}
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between pt-1">
+            <div className="text-2xl font-black text-purple-300 font-mono">
+              {marginRealization.marginRealizationPercent.toFixed(1)}%
+            </div>
+            <div className="text-xs text-slate-400 font-medium">
+              Realized ({marginRealization.realizedMarginPercent.toFixed(1)}%) vs Target ({marginRealization.requiredTargetMarginPercent.toFixed(1)}%)
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-purple-900/40">
+            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+              <span className="text-slate-500 block">Base Tier Target</span>
+              <span className="font-mono font-bold text-slate-300">
+                {marginRealization.baseTargetMarginPercent.toFixed(1)}%
+              </span>
+            </div>
+            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+              <span className="text-slate-500 block">Volume Factor</span>
+              <span className="font-mono font-bold text-purple-400">
+                -{marginRealization.volumeFactorPercent.toFixed(1)}%
+              </span>
+            </div>
+            <div className="bg-slate-950/60 p-2 rounded border border-slate-800">
+              <span className="text-slate-500 block">Required Target</span>
+              <span className="font-mono font-bold text-emerald-400">
+                {marginRealization.requiredTargetMarginPercent.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Line item Breakdown Table */}
       {financials.lines.length > 0 && (
