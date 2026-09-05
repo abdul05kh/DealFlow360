@@ -23,6 +23,7 @@ export const createCustomerTierSchema = z.object({
   name: z.string().min(2, 'Tier name must be at least 2 characters long').max(100),
   maxOverallDiscount: z.number().min(0, 'Discount must be >= 0').max(100, 'Discount must be <= 100'),
   minMarginThreshold: z.number().min(0, 'Margin must be >= 0').max(100, 'Margin must be <= 100'),
+  isActive: z.boolean().optional().default(true),
 }).strict();
 
 export const updateCustomerTierSchema = z.object({
@@ -30,6 +31,7 @@ export const updateCustomerTierSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   maxOverallDiscount: z.number().min(0).max(100).optional(),
   minMarginThreshold: z.number().min(0).max(100).optional(),
+  isActive: z.boolean().optional(),
 }).strict();
 
 export const createCustomerSchema = z.object({

@@ -50,6 +50,12 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
   const [editingTierId, setEditingTierId] = useState<string | null>(null);
   const [editingTierMaxDiscount, setEditingTierMaxDiscount] = useState<string>('');
 
+  // New tier state (P0-2.1)
+  const [newTierCode, setNewTierCode] = useState('');
+  const [newTierName, setNewTierName] = useState('');
+  const [newTierMaxDiscount, setNewTierMaxDiscount] = useState('15.0');
+  const [newTierMinMargin, setNewTierMinMargin] = useState('30.0');
+
   // New customer state
   const [newCustName, setNewCustName] = useState('');
   const [newCustTierId, setNewCustTierId] = useState('');
@@ -61,7 +67,7 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
     try {
       const [prodRes, tierRes, custRes, catRes] = await Promise.all([
         apiClient.getProducts(true),
-        apiClient.getCustomerTiers(),
+        apiClient.getCustomerTiers(true),
         apiClient.getCustomers(true),
         apiClient.getProductCategories(),
       ]);
@@ -169,6 +175,82 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
       if (onMasterDataChanged) onMasterDataChanged();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to update tier discount ceiling' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) {
+      setMessage({ type: 'error', text: 'Forbidden: Admin access required to create customer tiers' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setMessage(null);
+      const created = await apiClient.createCustomerTier({
+        code: newTierCode.trim().toUpperCase(),
+        name: newTierName.trim(),
+        maxOverallDiscount: parseFloat(newTierMaxDiscount),
+        minMarginThreshold: parseFloat(newTierMinMargin),
+        isActive: true,
+      });
+
+      setMessage({ type: 'success', text: `Customer Tier '${created.name}' (${created.code}) created successfully!` });
+      setNewTierCode('');
+      setNewTierName('');
+      await loadData();
+      if (onMasterDataChanged) onMasterDataChanged();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Customer tier creation failed' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeactivateTier = async (tier: CustomerTierDTO) => {
+    if (!isAdmin) {
+      setMessage({ type: 'error', text: 'Forbidden: Admin access required to deactivate customer tiers' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setMessage(null);
+      const updated = await apiClient.deactivateCustomerTier(tier.id);
+      setMessage({
+        type: 'success',
+        text: `Customer Tier '${updated.name}' soft-deactivated successfully (isActive: false). Historical data preserved.`,
+      });
+      await loadData();
+      if (onMasterDataChanged) onMasterDataChanged();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to deactivate customer tier' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReassignCustomerTier = async (customerId: string, newTierId: string) => {
+    if (!isAdmin) {
+      setMessage({ type: 'error', text: 'Forbidden: Admin access required to reassign customer tiers' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setMessage(null);
+      const updated = await apiClient.updateCustomer(customerId, { tierId: newTierId });
+      setMessage({
+        type: 'success',
+        text: `Company '${updated.name}' reassigned to tier '${updated.tier.name}' (${updated.tier.code})!`,
+      });
+      await loadData();
+      if (onMasterDataChanged) onMasterDataChanged();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to reassign customer tier' });
     } finally {
       setIsLoading(false);
     }
@@ -464,81 +546,208 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
 
       {/* Sub-Tab 2: Customer Tiers */}
       {activeSubTab === 'tiers' && (
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center justify-between border-b border-slate-800 pb-3">
-            <span>Customer Tiers & Governance Discount Ceilings</span>
-            <span className="text-xs text-purple-300 font-semibold">
-              ADMIN changes instantly govern subsequent quote evaluations!
-            </span>
-          </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Create Tier Form (5 cols) */}
+          <div className="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <Plus className="w-4 h-4 text-purple-400" />
+              Create New Customer Tier
+            </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {tiers.map((t) => (
-              <div
-                key={t.id}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 relative"
+            <form onSubmit={handleCreateTier} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Tier Code</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. PLATINUM"
+                  value={newTierCode}
+                  onChange={(e) => setNewTierCode(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Tier Display Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Platinum Tier Customer"
+                  value={newTierName}
+                  onChange={(e) => setNewTierName(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Max Discount Ceiling (%)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="100"
+                    required
+                    value={newTierMaxDiscount}
+                    onChange={(e) => setNewTierMaxDiscount(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Min Margin Target (%)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="100"
+                    required
+                    value={newTierMinMargin}
+                    onChange={(e) => setNewTierMinMargin(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!isAdmin || isLoading}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-md shadow-purple-900/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-mono font-bold text-sm text-purple-300">{t.code}</span>
-                  <span className="text-xs text-slate-400">{t.name}</span>
-                </div>
+                <Plus className="w-4 h-4" />
+                Persist Customer Tier
+              </button>
+            </form>
+          </div>
 
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>Max Discount Ceiling:</span>
-                    <span className="font-mono font-bold text-emerald-400 text-sm">
-                      {t.maxOverallDiscount.toFixed(1)}%
+          {/* Tier Cards & Governance (7 cols) */}
+          <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center justify-between border-b border-slate-800 pb-3">
+              <span>Customer Tiers & Governance Discount Ceilings ({tiers.length})</span>
+              <span className="text-xs text-purple-300 font-semibold">
+                Soft deactivation preserves history
+              </span>
+            </h3>
+
+            <div className="space-y-4">
+              {tiers.map((t) => (
+                <div
+                  key={t.id}
+                  className={`bg-slate-900 border rounded-xl p-4 space-y-3 relative ${
+                    t.isActive !== false ? 'border-slate-800' : 'border-red-900/60 bg-slate-950/80 opacity-75'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-purple-300">{t.code}</span>
+                      <span className="text-xs text-slate-400">({t.name})</span>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        t.isActive !== false
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          : 'bg-red-950 text-red-400 border border-red-800'
+                      }`}
+                    >
+                      {t.isActive !== false ? 'ACTIVE' : 'INACTIVE (SOFT-DEACTIVATED)'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>Min Margin Target:</span>
-                    <span className="font-mono text-slate-300 font-semibold">
-                      {t.minMarginThreshold.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
 
-                {editingTierId === t.id ? (
-                  <div className="space-y-2 pt-2 border-t border-slate-800">
-                    <label className="block text-[11px] font-semibold text-slate-300">
-                      New Discount Ceiling (%):
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="100"
-                        value={editingTierMaxDiscount}
-                        onChange={(e) => setEditingTierMaxDiscount(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs px-2.5 py-1.5 rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateTierCeiling(t.id)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow"
-                      >
-                        Save
-                      </button>
+                  <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Max Discount Ceiling:</span>
+                      <span className="font-mono font-bold text-emerald-400 text-sm">
+                        {t.maxOverallDiscount.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Min Margin Target:</span>
+                      <span className="font-mono text-slate-300 font-semibold">
+                        {t.minMarginThreshold.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingTierId(t.id);
-                        setEditingTierMaxDiscount(t.maxOverallDiscount.toString());
-                      }}
-                      className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 font-semibold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      Configure Discount Ceiling
-                    </button>
-                  )
-                )}
-              </div>
-            ))}
+
+                  {/* Assigned Companies Pill List */}
+                  <div className="text-xs space-y-1">
+                    <span className="text-slate-400 font-semibold">Assigned Companies:</span>
+                    {t.customers && t.customers.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {t.customers.map((c) => (
+                          <span
+                            key={c.id}
+                            className="bg-purple-950/60 text-purple-200 border border-purple-800/60 px-2 py-0.5 rounded text-[11px] font-medium"
+                          >
+                            {c.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 italic text-[11px]">No companies currently assigned</p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {editingTierId === t.id ? (
+                    <div className="space-y-2 pt-2 border-t border-slate-800">
+                      <label className="block text-[11px] font-semibold text-slate-300">
+                        New Discount Ceiling (%):
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="100"
+                          value={editingTierMaxDiscount}
+                          onChange={(e) => setEditingTierMaxDiscount(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs px-2.5 py-1.5 rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTierCeiling(t.id)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTierId(null)}
+                          className="px-2.5 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    isAdmin && (
+                      <div className="flex gap-2 pt-1 border-t border-slate-800/80">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTierId(t.id);
+                            setEditingTierMaxDiscount(t.maxOverallDiscount.toString());
+                          }}
+                          className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 font-semibold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Configure Ceiling
+                        </button>
+                        {t.isActive !== false && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeactivateTier(t)}
+                            className="px-3 py-1.5 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/60 font-semibold text-xs rounded-lg transition-colors"
+                          >
+                            Deactivate
+                          </button>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -573,7 +782,7 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
                   onChange={(e) => setNewCustTierId(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
-                  {tiers.map((t) => (
+                  {tiers.filter((t) => t.isActive !== false).map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.code}) - Max Disc: {t.maxOverallDiscount}%
                     </option>
@@ -594,8 +803,9 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
 
           {/* Customer Table (7 cols) */}
           <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-white border-b border-slate-800 pb-3">
-              Persisted Customers ({customers.length})
+            <h3 className="text-sm font-bold text-white border-b border-slate-800 pb-3 flex justify-between items-center">
+              <span>Persisted Customers ({customers.length})</span>
+              <span className="text-xs font-normal text-slate-400">Reassign companies to active tiers</span>
             </h3>
 
             <div className="overflow-x-auto">
@@ -603,9 +813,9 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 font-semibold">
                     <th className="py-2.5 px-3">Customer Name</th>
-                    <th className="py-2.5 px-3">Tier</th>
+                    <th className="py-2.5 px-3">Current Tier</th>
                     <th className="py-2.5 px-3">Max Discount Ceiling</th>
-                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Reassign Tier</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -618,10 +828,23 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
                       <td className="py-2.5 px-3 font-mono text-emerald-400 font-bold">
                         {c.tier.maxOverallDiscount.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          {c.status}
-                        </span>
+                      <td className="py-2.5 px-3 text-right">
+                        {isAdmin ? (
+                          <select
+                            value={c.tierId}
+                            onChange={(e) => handleReassignCustomerTier(c.id, e.target.value)}
+                            disabled={isLoading}
+                            className="bg-slate-900 border border-purple-800/60 text-purple-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono font-semibold"
+                          >
+                            {tiers.filter((t) => t.isActive !== false).map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.code} ({t.maxOverallDiscount}%)
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-slate-500 font-mono">{c.tier.code}</span>
+                        )}
                       </td>
                     </tr>
                   ))}

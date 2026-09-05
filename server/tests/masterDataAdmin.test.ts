@@ -40,15 +40,29 @@ describe('P0-2 Dynamic Master Data & Admin Configuration Integration Tests', () 
       { expiresIn: '1h' }
     );
 
-    // Reset Gold Tier ceiling back to 15.0% for deterministic testing
-    await prisma.customerTier.updateMany({
-      where: { code: 'GOLD' },
-      data: { maxOverallDiscount: 15.0 },
-    });
+    // Reset Gold Tier ceiling back to 15.0% and Acme customer back to Gold tier
+    const goldTier = await prisma.customerTier.findUnique({ where: { code: 'GOLD' } });
+    if (goldTier) {
+      await prisma.customerTier.updateMany({
+        where: { code: 'GOLD' },
+        data: { maxOverallDiscount: 15.0 },
+      });
+      await prisma.customer.updateMany({
+        where: { name: 'Acme Industries' },
+        data: { tierId: goldTier.id },
+      });
+    }
 
-    // Clean any test products created during runs
+    // Clean any test products and customer tiers created during runs
+    await prisma.customer.updateMany({
+      where: { name: 'Test Tier Assignment Co' },
+      data: { status: 'DELETED' },
+    });
     await prisma.product.deleteMany({
       where: { sku: { in: ['CLOUD-001', 'INVALID-001', 'TEST-DEL-001'] } },
+    });
+    await prisma.customerTier.deleteMany({
+      where: { code: { in: ['PLATINUM_TEST', 'DIAMOND_TEST', 'EMPTY_TIER_TEST'] } },
     });
   });
 
@@ -273,5 +287,148 @@ describe('P0-2 Dynamic Master Data & Admin Configuration Integration Tests', () 
     const found = catalogRes.body.find((p: any) => p.sku === 'CLOUD-001');
     expect(found).toBeDefined();
     expect(found.sellingPrice).toBe(75000.0);
+  });
+
+  // 9. ADMIN can create a new customer tier
+  it('9. ADMIN can successfully create a new Customer Tier (PLATINUM_TEST)', async () => {
+    const res = await request(app)
+      .post('/api/v1/customer-tiers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        code: 'PLATINUM_TEST',
+        name: 'Platinum Test Tier',
+        maxOverallDiscount: 20.0,
+        minMarginThreshold: 25.0,
+        isActive: true,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.code).toBe('PLATINUM_TEST');
+    expect(res.body.isActive).toBe(true);
+
+    const dbTier = await prisma.customerTier.findUnique({ where: { code: 'PLATINUM_TEST' } });
+    expect(dbTier).not.toBeNull();
+    expect(dbTier!.maxOverallDiscount).toBe(20.0);
+  });
+
+  // 10. ADMIN can edit a customer tier
+  it('10. ADMIN can edit an existing Customer Tier parameters', async () => {
+    const createdTier = await prisma.customerTier.create({
+      data: {
+        code: 'DIAMOND_TEST',
+        name: 'Diamond Tier',
+        maxOverallDiscount: 25.0,
+        minMarginThreshold: 20.0,
+        isActive: true,
+      },
+    });
+
+    const res = await request(app)
+      .patch(`/api/v1/customer-tiers/${createdTier.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        maxOverallDiscount: 22.5,
+        minMarginThreshold: 22.0,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.maxOverallDiscount).toBe(22.5);
+    expect(res.body.minMarginThreshold).toBe(22.0);
+  });
+
+  // 11. ADMIN can view customer tiers with assigned companies
+  it('11. ADMIN can view customer tiers including assigned companies list', async () => {
+    const res = await request(app)
+      .get('/api/v1/customer-tiers?includeInactive=true')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    const goldTier = res.body.find((t: any) => t.code === 'GOLD');
+    expect(goldTier).toBeDefined();
+    expect(Array.isArray(goldTier.customers)).toBe(true);
+  });
+
+  // 12. ADMIN can reassign a company to another tier
+  it('12. ADMIN can reassign a customer/company to another tier', async () => {
+    const customer = await prisma.customer.findFirst({ where: { status: 'ACTIVE' } });
+    expect(customer).not.toBeNull();
+
+    const silverTier = await prisma.customerTier.findFirst({ where: { code: 'SILVER' } });
+    expect(silverTier).not.toBeNull();
+
+    const res = await request(app)
+      .patch(`/api/v1/customers/${customer!.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ tierId: silverTier!.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.tierId).toBe(silverTier!.id);
+    expect(res.body.tier.code).toBe('SILVER');
+
+    // Restore original customer tier to avoid polluting other test suites
+    await prisma.customer.update({
+      where: { id: customer!.id },
+      data: { tierId: customer!.tierId },
+    });
+  });
+
+  // 13. Soft deactivation denied when active assigned companies exist
+  it('13. Deactivating a tier with assigned companies returns 400 Bad Request', async () => {
+    const customer = await prisma.customer.findFirst({ where: { status: 'ACTIVE' } });
+    expect(customer).not.toBeNull();
+
+    const res = await request(app)
+      .delete(`/api/v1/customer-tiers/${customer!.tierId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain('Reassign companies');
+  });
+
+  // 14. Soft deactivation succeeds on empty tier
+  it('14. Deactivating an empty customer tier soft-deactivates (isActive = false)', async () => {
+    const emptyTier = await prisma.customerTier.create({
+      data: {
+        code: 'EMPTY_TIER_TEST',
+        name: 'Empty Tier Test',
+        maxOverallDiscount: 5.0,
+        minMarginThreshold: 50.0,
+        isActive: true,
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/customer-tiers/${emptyTier.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.isActive).toBe(false);
+
+    const dbTier = await prisma.customerTier.findUnique({ where: { id: emptyTier.id } });
+    expect(dbTier!.isActive).toBe(false);
+  });
+
+  // 15. Assigning customer to inactive tier fails
+  it('15. Assigning a customer to an inactive customer tier returns 400 Bad Request', async () => {
+    const inactiveTier = await prisma.customerTier.create({
+      data: {
+        code: 'EMPTY_TIER_TEST',
+        name: 'Inactive Tier Test',
+        maxOverallDiscount: 5.0,
+        minMarginThreshold: 50.0,
+        isActive: false,
+      },
+    });
+
+    const customer = await prisma.customer.findFirst({ where: { status: 'ACTIVE' } });
+
+    const res = await request(app)
+      .patch(`/api/v1/customers/${customer!.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ tierId: inactiveTier.id });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain('inactive tier');
   });
 });

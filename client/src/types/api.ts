@@ -38,6 +38,8 @@ export interface CustomerTierDTO {
   name: string;
   maxOverallDiscount: number;
   minMarginThreshold: number;
+  isActive?: boolean;
+  customers?: { id: string; name: string; status: string }[];
 }
 
 export interface CustomerDTO {
@@ -340,6 +342,7 @@ export interface CreateCustomerTierPayloadDTO {
   name: string;
   maxOverallDiscount: number;
   minMarginThreshold: number;
+  isActive?: boolean;
 }
 
 export interface UpdateCustomerTierPayloadDTO {
@@ -347,6 +350,7 @@ export interface UpdateCustomerTierPayloadDTO {
   name?: string;
   maxOverallDiscount?: number;
   minMarginThreshold?: number;
+  isActive?: boolean;
 }
 
 export interface CreateCustomerPayloadDTO {

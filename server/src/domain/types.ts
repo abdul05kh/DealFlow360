@@ -10,6 +10,8 @@ export interface CustomerTierDomain {
   name: string;
   maxOverallDiscount: number; // e.g. 15.0 for 15%
   minMarginThreshold: number; // e.g. 30.0 for 30%
+  isActive: boolean;
+  customers?: { id: string; name: string; status: string }[];
 }
 
 export interface CustomerDomain {

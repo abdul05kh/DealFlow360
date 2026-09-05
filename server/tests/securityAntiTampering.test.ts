@@ -15,6 +15,7 @@ describe('Security & Anti-Tampering Domain Tests', () => {
       name: 'Gold Tier Customer',
       maxOverallDiscount: 15.0, // Authoritative Gold Tier Limit
       minMarginThreshold: 30.0,
+      isActive: true,
     },
     currency: 'INR',
     status: 'ACTIVE',

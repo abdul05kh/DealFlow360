@@ -200,8 +200,9 @@ export class APIClient {
     return this.handleResponse<ProductDTO>(res);
   }
 
-  async getCustomerTiers(): Promise<CustomerTierDTO[]> {
-    const res = await fetch(`${API_BASE}/customer-tiers`, {
+  async getCustomerTiers(includeInactive = false): Promise<CustomerTierDTO[]> {
+    const url = includeInactive ? `${API_BASE}/customer-tiers?includeInactive=true` : `${API_BASE}/customer-tiers`;
+    const res = await fetch(url, {
       headers: this.getHeaders(),
     });
     return this.handleResponse<CustomerTierDTO[]>(res);
@@ -221,6 +222,14 @@ export class APIClient {
       method: 'PATCH',
       headers: this.getHeaders(),
       body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerTierDTO>(res);
+  }
+
+  async deactivateCustomerTier(id: string): Promise<CustomerTierDTO> {
+    const res = await fetch(`${API_BASE}/customer-tiers/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
     });
     return this.handleResponse<CustomerTierDTO>(res);
   }

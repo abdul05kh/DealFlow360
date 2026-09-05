@@ -13,6 +13,7 @@ model CustomerTier {
   name               String
   maxOverallDiscount Float
   minMarginThreshold Float
+  isActive           Boolean          @default(true)
   customers          Customer[]
   policies           DiscountPolicy[]
 }

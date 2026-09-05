@@ -20,6 +20,7 @@ interface CustomerRecord {
     name: string;
     maxOverallDiscount: number;
     minMarginThreshold: number;
+    isActive: boolean;
   };
   currency: string;
   status: string;
@@ -65,6 +66,8 @@ interface CustomerTierRecord {
   name: string;
   maxOverallDiscount: number;
   minMarginThreshold: number;
+  isActive: boolean;
+  customers?: { id: string; name: string; status: string }[];
 }
 
 interface ProductCategoryRecord {
@@ -114,6 +117,7 @@ export class MasterDataService {
         name: c.tier.name,
         maxOverallDiscount: c.tier.maxOverallDiscount,
         minMarginThreshold: c.tier.minMarginThreshold,
+        isActive: c.tier.isActive,
       },
       currency: c.currency,
       status: c.status,
@@ -164,6 +168,7 @@ export class MasterDataService {
       name: customer.tier.name,
       maxOverallDiscount: customer.tier.maxOverallDiscount,
       minMarginThreshold: customer.tier.minMarginThreshold,
+      isActive: customer.tier.isActive,
     };
 
     return {
@@ -392,14 +397,29 @@ export class MasterDataService {
     };
   }
 
-  async getAllCustomerTiers(): Promise<CustomerTierDomain[]> {
-    const tiers = await prisma.customerTier.findMany();
+  async getAllCustomerTiers(includeInactive = false): Promise<CustomerTierDomain[]> {
+    const whereCondition = includeInactive ? {} : { isActive: true };
+    const tiers = await prisma.customerTier.findMany({
+      where: whereCondition,
+      include: {
+        customers: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+    });
+
     return tiers.map((t: CustomerTierRecord) => ({
       id: t.id,
       code: t.code,
       name: t.name,
       maxOverallDiscount: t.maxOverallDiscount,
       minMarginThreshold: t.minMarginThreshold,
+      isActive: t.isActive,
+      customers: t.customers ? t.customers.map((c: any) => ({ id: c.id, name: c.name, status: c.status })) : [],
     }));
   }
 
@@ -411,13 +431,23 @@ export class MasterDataService {
       throw err;
     }
 
-    const created = await prisma.customerTier.create({ data: input });
+    const created = await prisma.customerTier.create({
+      data: {
+        code: input.code,
+        name: input.name,
+        maxOverallDiscount: input.maxOverallDiscount,
+        minMarginThreshold: input.minMarginThreshold,
+        isActive: input.isActive ?? true,
+      },
+    });
     return {
       id: created.id,
       code: created.code,
       name: created.name,
       maxOverallDiscount: created.maxOverallDiscount,
       minMarginThreshold: created.minMarginThreshold,
+      isActive: created.isActive,
+      customers: [],
     };
   }
 
@@ -441,6 +471,15 @@ export class MasterDataService {
     const updated = await prisma.customerTier.update({
       where: { id },
       data: input,
+      include: {
+        customers: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
     });
 
     return {
@@ -449,6 +488,41 @@ export class MasterDataService {
       name: updated.name,
       maxOverallDiscount: updated.maxOverallDiscount,
       minMarginThreshold: updated.minMarginThreshold,
+      isActive: updated.isActive,
+      customers: updated.customers ? updated.customers.map((c: any) => ({ id: c.id, name: c.name, status: c.status })) : [],
+    };
+  }
+
+  async deactivateCustomerTier(id: string): Promise<CustomerTierDomain> {
+    const existing = await prisma.customerTier.findUnique({ where: { id } });
+    if (!existing) {
+      const err: any = new Error(`Customer Tier with ID '${id}' not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const count = await prisma.customer.count({ where: { tierId: id } });
+    if (count > 0) {
+      const err: any = new Error(
+        `Cannot deactivate tier '${existing.name}' because ${count} company(ies) are currently assigned to it. Reassign companies to another tier first.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const updated = await prisma.customerTier.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return {
+      id: updated.id,
+      code: updated.code,
+      name: updated.name,
+      maxOverallDiscount: updated.maxOverallDiscount,
+      minMarginThreshold: updated.minMarginThreshold,
+      isActive: updated.isActive,
+      customers: [],
     };
   }
 
@@ -456,6 +530,11 @@ export class MasterDataService {
     const tier = await prisma.customerTier.findUnique({ where: { id: input.tierId } });
     if (!tier) {
       const err: any = new Error(`Customer Tier with ID '${input.tierId}' does not exist`);
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!tier.isActive) {
+      const err: any = new Error(`Cannot assign customer to inactive tier '${tier.name}'`);
       err.statusCode = 400;
       throw err;
     }
@@ -480,6 +559,7 @@ export class MasterDataService {
         name: created.tier.name,
         maxOverallDiscount: created.tier.maxOverallDiscount,
         minMarginThreshold: created.tier.minMarginThreshold,
+        isActive: created.tier.isActive,
       },
       currency: created.currency,
       status: created.status,
@@ -501,6 +581,11 @@ export class MasterDataService {
         err.statusCode = 400;
         throw err;
       }
+      if (!tier.isActive) {
+        const err: any = new Error(`Cannot assign customer to inactive tier '${tier.name}'`);
+        err.statusCode = 400;
+        throw err;
+      }
     }
 
     const updated = await prisma.customer.update({
@@ -519,6 +604,7 @@ export class MasterDataService {
         name: updated.tier.name,
         maxOverallDiscount: updated.tier.maxOverallDiscount,
         minMarginThreshold: updated.tier.minMarginThreshold,
+        isActive: updated.tier.isActive,
       },
       currency: updated.currency,
       status: updated.status,

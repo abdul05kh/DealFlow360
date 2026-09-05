@@ -13,6 +13,7 @@ describe('DiscountGovernance Unit Tests', () => {
       name: 'Gold Tier Customer',
       maxOverallDiscount: 15.0,
       minMarginThreshold: 30.0,
+      isActive: true,
     },
     currency: 'INR',
     status: 'ACTIVE',

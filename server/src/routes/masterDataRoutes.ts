@@ -209,9 +209,10 @@ masterDataRouter.patch(
 masterDataRouter.get(
   '/customer-tiers',
   authMiddleware(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'ADMIN']),
-  async (_req: Request, res: Response): Promise<void> => {
+  async (req: Request, res: Response): Promise<void> => {
     try {
-      const tiers = await masterDataService.getAllCustomerTiers();
+      const includeInactive = req.query.includeInactive === 'true' && req.user?.role === 'ADMIN';
+      const tiers = await masterDataService.getAllCustomerTiers(includeInactive);
       res.status(200).json(tiers);
     } catch (error: any) {
       res.status(500).json({
@@ -276,7 +277,7 @@ masterDataRouter.patch(
         return;
       }
 
-      const tiers = await masterDataService.getAllCustomerTiers();
+      const tiers = await masterDataService.getAllCustomerTiers(true);
       const existing = tiers.find((t) => t.id === id);
       const updated = await masterDataService.updateCustomerTier(id, parsed.data);
 
@@ -299,6 +300,39 @@ masterDataRouter.patch(
     }
   }
 );
+
+const deactivateCustomerTierHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const tiers = await masterDataService.getAllCustomerTiers(true);
+    const existing = tiers.find((t) => t.id === id);
+    const updated = await masterDataService.deactivateCustomerTier(id);
+
+    await auditService.logAuditEvent({
+      entityType: 'CustomerTier',
+      entityId: updated.id,
+      actorId: req.user?.id || 'admin',
+      actorName: req.user?.id || 'System Admin',
+      action: 'DEACTIVATE_CUSTOMER_TIER',
+      previousStateJson: existing ? JSON.stringify(existing) : null,
+      newStateJson: JSON.stringify(updated),
+    });
+
+    res.status(200).json(updated);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      error: error.statusCode === 404 ? 'NotFound' : error.statusCode === 400 ? 'BadRequest' : 'InternalServerError',
+      message: error.message || 'Failed to deactivate customer tier.',
+    });
+  }
+};
+
+// DELETE /api/v1/customer-tiers/:id (ADMIN only - Soft Deactivation)
+masterDataRouter.delete('/customer-tiers/:id', authMiddleware(['ADMIN']), deactivateCustomerTierHandler);
+
+// POST /api/v1/customer-tiers/:id/deactivate (ADMIN only - Soft Deactivation)
+masterDataRouter.post('/customer-tiers/:id/deactivate', authMiddleware(['ADMIN']), deactivateCustomerTierHandler);
+
 
 // GET /api/v1/product-categories
 masterDataRouter.get(
