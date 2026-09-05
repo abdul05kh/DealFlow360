@@ -86,25 +86,25 @@ Every deal evaluated by DealFlow360 passes through an automated, server-enforced
 
 ```mermaid
 flowchart TD
-    A[Quote Creation / Line Items] --> B[Multi-Tier Discount Governance]
-    B --> C[Margin Realization & Risk Engine]
-    C --> D{Requires Approval?}
-    D -- Yes --> E[Manager Approval Queue]
+    A[Quote Creation & Line Items] --> B[Multi-Tier Discount Governance]
+    B --> C[Margin Realization & Risk Scoring]
+    C --> D{Requires Manager Approval?}
+    D -- Yes --> E[Manager Review Queue / PENDING_APPROVAL]
     E -- Approved --> F[Customer Portal View]
     D -- No --> F
     F --> G{Customer Action}
-    G -- Counter-Offer --> H[Server Re-Evaluation]
-    H --> I[Manager Review Counter-Offer]
+    G -- Counter-Offer --> H[Server Re-Evaluation Engine]
+    H --> I[Manager Counter-Offer Review]
     I -- Approve --> J[Order Confirmation]
     G -- Accept --> J
-    J --> K[Inventory Reservation & Fulfillment]
+    J --> K[Warehouse Allocation & Stock Reservation]
     K --> L[Hybrid Billing Engine]
-    L --> M[One-Time Invoice / PAID]
+    L --> M[One-Time Invoice / ISSUED → PAID]
     L --> N[Recurring Subscription Schedule]
-    N --> O[Quarterly / Monthly / Yearly Billing]
-    M --> P[Credit Note Workflow]
-    N --> Q[Subscription Cancellation]
-    J --> R[Immutable Audit Trail Log]
+    N --> O[Monthly / Quarterly / Yearly Billing]
+    M --> P[Credit Note Workflow / CN-XXXXXX]
+    N --> Q[Subscription Cancellation / CANCELLED]
+    J --> R[Immutable Audit Log / AuditEvent]
 ```
 
 ---
