@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { config } from './config/index';
+import { fulfillmentRouter } from './routes/fulfillmentRoutes';
 import { healthRouter } from './routes/health';
 import { masterDataRouter } from './routes/masterDataRoutes';
 import { quoteRouter } from './routes/quoteRoutes';
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/v1', healthRouter);
 app.use('/api/v1', masterDataRouter);
 app.use('/api/v1/quotes', quoteRouter);
+app.use('/api/v1/fulfillment', fulfillmentRouter);
 
 // Safe Global Error Handler (No stack trace or internal database leaks exposed)
 app.use(
