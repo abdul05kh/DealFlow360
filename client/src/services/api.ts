@@ -48,6 +48,8 @@ export class APIClient {
         ? 'mgr_1'
         : role === 'ADMIN'
         ? 'admin_1'
+        : role === 'CUSTOMER'
+        ? 'cust_user_1'
         : 'rep_1');
   }
 

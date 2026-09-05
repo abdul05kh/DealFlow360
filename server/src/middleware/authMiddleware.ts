@@ -61,15 +61,22 @@ export const authMiddleware = (allowedRoles?: UserRole[]) => {
 
       const role = (roleHeader as UserRole) || 'SALES_REP';
       let defaultUserId = 'rep_1';
+      let defaultCustomerId: string | undefined = undefined;
+
       if (role === 'SALES_MANAGER') defaultUserId = 'mgr_1';
       if (role === 'OPERATIONS_MANAGER') defaultUserId = 'ops_1';
       if (role === 'ADMIN') defaultUserId = 'admin_1';
+      if (role === 'CUSTOMER') {
+        defaultUserId = 'cust_user_1';
+        defaultCustomerId = 'cust_acme_101';
+      }
 
       const userId = userIdHeader || defaultUserId;
 
       req.user = {
         id: userId,
         role: role,
+        customerId: defaultCustomerId,
       };
     }
 

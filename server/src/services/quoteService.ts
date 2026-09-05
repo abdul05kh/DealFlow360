@@ -205,11 +205,20 @@ export class QuoteService {
   ) {
     const existingQuote = await prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { approvalRequests: true },
+      include: { approvalRequests: true, negotiations: true },
     });
 
     if (!existingQuote) {
       throw new NotFoundError('Quote', quoteId);
+    }
+
+    const pendingNeg = existingQuote.negotiations.find((n) => n.status === 'SUBMITTED');
+    if (pendingNeg) {
+      return this.respondToNegotiation(quoteId, pendingNeg.id, approverId, approverRole, actorName, {
+        action: 'APPROVE',
+        managerReason: reason,
+        customerResponseNote: reason || 'Counter-offer approved by Sales Manager.',
+      });
     }
 
     // Validate state transition using pure ApprovalRoutingEngine
@@ -275,11 +284,20 @@ export class QuoteService {
   ) {
     const existingQuote = await prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { approvalRequests: true },
+      include: { approvalRequests: true, negotiations: true },
     });
 
     if (!existingQuote) {
       throw new NotFoundError('Quote', quoteId);
+    }
+
+    const pendingNeg = existingQuote.negotiations.find((n) => n.status === 'SUBMITTED');
+    if (pendingNeg) {
+      return this.respondToNegotiation(quoteId, pendingNeg.id, approverId, approverRole, actorName, {
+        action: 'REJECT',
+        managerReason: reason,
+        customerResponseNote: reason || 'Counter-offer declined by Sales Manager.',
+      });
     }
 
     // Validate state transition using pure ApprovalRoutingEngine
@@ -344,6 +362,7 @@ export class QuoteService {
         salesRep: true,
         lines: { include: { product: { include: { category: true } } } },
         approvalRequests: { include: { actionedBy: true } },
+        negotiations: { include: { lines: true }, orderBy: { round: 'desc' } },
       },
     });
 
