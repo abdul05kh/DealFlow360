@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.db
+*.db-journal
+server/prisma/*.db
+server/prisma/*.db-journal
+server/dist/
+client/dist/

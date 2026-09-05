@@ -1,0 +1,160 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model CustomerTier {
+  id                 String           @id @default(uuid())
+  code               String           @unique
+  name               String
+  maxOverallDiscount Float
+  minMarginThreshold Float
+  customers          Customer[]
+  policies           DiscountPolicy[]
+}
+
+model Customer {
+  id        String       @id @default(uuid())
+  name      String
+  tierId    String
+  tier      CustomerTier @relation(fields: [tierId], references: [id])
+  currency  String       @default("INR")
+  status    String       @default("ACTIVE")
+  quotes    Quote[]
+}
+
+model ProductCategory {
+  id                  String           @id @default(uuid())
+  code                String           @unique
+  name                String
+  maxCategoryDiscount Float
+  products            Product[]
+  policies            DiscountPolicy[]
+}
+
+model Product {
+  id               String          @id @default(uuid())
+  sku              String          @unique
+  name             String
+  categoryId       String
+  category         ProductCategory @relation(fields: [categoryId], references: [id])
+  costPrice        Float
+  sellingPrice     Float
+  isActive         Boolean         @default(true)
+  quoteLines       QuoteLine[]
+  triggerRules     CrossSellRule[] @relation("TriggerProduct")
+  recommendedRules CrossSellRule[] @relation("RecommendedProduct")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  role             String
+  quotesCreated    Quote[]           @relation("QuotesCreated")
+  approvalAssigned ApprovalRequest[] @relation("AssignedApprover")
+  approvalActioned ApprovalRequest[] @relation("ActionedBy")
+}
+
+model DiscountPolicy {
+  id                 String           @id @default(uuid())
+  name               String
+  tierId             String?
+  tier               CustomerTier?    @relation(fields: [tierId], references: [id])
+  categoryId         String?
+  category           ProductCategory? @relation(fields: [categoryId], references: [id])
+  maxDiscountPercent Float
+  riskSeverity       String           @default("HIGH")
+  requiresApproval   Boolean          @default(true)
+}
+
+model ApprovalRule {
+  id                  String  @id @default(uuid())
+  name                String
+  minRiskLevel        String
+  requiredRole        String
+  autoApproveEligible Boolean @default(false)
+}
+
+model Quote {
+  id                   String            @id @default(uuid())
+  quoteNumber          String            @unique
+  customerId           String
+  customer             Customer          @relation(fields: [customerId], references: [id])
+  salesRepId           String
+  salesRep             User              @relation("QuotesCreated", fields: [salesRepId], references: [id])
+  status               String
+  grossRevenue         Float
+  discountAmount       Float
+  netRevenue           Float
+  estimatedCost        Float
+  grossMargin          Float
+  marginPercentage     Float
+  riskLevel            String
+  riskScore            Float
+  riskReasonsJson      String
+  requiredApproverRole String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  lines                QuoteLine[]
+  approvalRequests     ApprovalRequest[]
+}
+
+model QuoteLine {
+  id              String  @id @default(uuid())
+  quoteId         String
+  quote           Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitPrice       Float
+  unitCost        Float
+  discountPercent Float
+  discountAmount  Float
+  subtotal        Float
+  netTotal        Float
+  lineCost        Float
+  lineMargin      Float
+}
+
+model ApprovalRequest {
+  id                 String    @id @default(uuid())
+  quoteId            String
+  quote              Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  status             String
+  requiredRole       String
+  assignedApproverId String?
+  assignedApprover   User?     @relation("AssignedApprover", fields: [assignedApproverId], references: [id])
+  actionedById       String?
+  actionedBy         User?     @relation("ActionedBy", fields: [actionedById], references: [id])
+  actionReason       String?
+  createdAt          DateTime  @default(now())
+  actionedAt         DateTime?
+}
+
+model AuditEvent {
+  id                String   @id @default(uuid())
+  entityType        String
+  entityId          String
+  actorId           String
+  actorName         String
+  action            String
+  previousStateJson String?
+  newStateJson      String?
+  contextJson       String?
+  createdAt         DateTime @default(now())
+}
+
+model CrossSellRule {
+  id                   String  @id @default(uuid())
+  triggerProductId     String
+  triggerProduct       Product @relation("TriggerProduct", fields: [triggerProductId], references: [id])
+  recommendedProductId String
+  recommendedProduct   Product @relation("RecommendedProduct", fields: [recommendedProductId], references: [id])
+  reasonTemplate       String
+  minMarginPercent     Float   @default(30.0)
+}
