@@ -2,7 +2,9 @@
 
 > **Don't just manage deals. Govern whether they're commercially safe to move forward.**
 
-DealFlow360 is a closed-loop commercial governance layer that connects discount policy, margin, risk, approval, negotiation, fulfillment, billing, payment, and audit into a single enforced lifecycle.
+DealFlow360 is a closed-loop commercial sales governance engine that integrates discount policy, margin realization, risk scoring, managerial approval state machines, customer price negotiation, multi-warehouse fulfillment, hybrid recurring billing, payment recording, and immutable audit logging into a single server-enforced lifecycle.
+
+<div align="left">
 
 [![DealFlow360 CI / CD Validation](https://github.com/abdul05kh/DealFlow360/actions/workflows/ci.yml/badge.svg)](https://github.com/abdul05kh/DealFlow360/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-175%20passing-brightgreen)
@@ -12,10 +14,12 @@ DealFlow360 is a closed-loop commercial governance layer that connects discount 
 ![Prisma](https://img.shields.io/badge/prisma-6.3-2d3748)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+</div>
+
 > ### 🎯 Core Business Question
 > **Is this deal commercially safe to move forward?**
 >
-> Conventional CRM and CPQ tools treat deal approval as a one-time gate before proposal. DealFlow360 continuously evaluates commercial safety across every stage — from quote creation and customer negotiation to stock allocation, recurring billing, and credit issuance.
+> Standard CRM and CPQ tools treat approval as a static pre-proposal step. DealFlow360 continuously evaluates commercial risk across every stage of the sales pipeline — from quote generation and customer counter-offers to warehouse allocation, recurring billing schedules, and credit note issuance.
 
 ---
 
