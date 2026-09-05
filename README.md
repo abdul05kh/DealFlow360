@@ -112,7 +112,7 @@ flowchart TD
 ## Key Capabilities
 
 ### 🛡️ Multi-Tier Discount Governance
-Enforces hierarchical discount ceilings tailored to customer tier (`BRONZE`, `SILVER`, `GOLD`, `PLATINUM`, `ENTERPRISE`) and product category limits. Attempts to bypass tier ceilings automatically trigger mandatory managerial approval routing.
+Enforces hierarchical discount ceilings tailored to customer tier (`BRONZE`, `SILVER`, `GOLD`, `PLATINUM`, `ENTERPRISE`) and product category limits. Attempts to bypass tier ceilings automatically trigger mandatory managerial approval routing before proposal generation.
 
 ### 📊 Risk Engine & Margin Realization Index (MRI)
 Calculates a weighted commercial Risk Score (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) based on discount percentage, margin erosion, customer tier, and contract term. Evaluates the **Margin Realization Index (MRI)**:
@@ -120,16 +120,22 @@ $$\text{Realized Margin \%} = \frac{\text{Net Revenue} - \text{Total Cost}}{\tex
 $$\text{MRI \%} = \frac{\text{Realized Margin \%}}{\text{Required Target Margin \%}} \times 100$$
 
 ### 🤝 Customer Negotiation Portal
-Provides an isolated workspace where customers review proposals, accept terms, or submit price counter-offers. Submissions trigger server-side policy re-evaluation without exposing sensitive internal margins or cost structures.
+Provides a customer-isolated workspace where clients view commercial proposals, accept terms, or submit price counter-offers. Counter-offer submissions trigger automated server-side policy re-evaluation without exposing sensitive internal cost prices or margin structures.
 
-### 📦 Multi-Warehouse Fulfillment & Inventory Reservation
-Evaluates stock availability across distribution hubs (`HUB_EAST`, `HUB_WEST`, `HUB_CENTRAL`). Allocates split shipments, tracks backorders, verifies delivery SLA feasibility, and uses database transaction locks to prevent inventory overbooking under concurrent requests.
+### 📦 Multi-Warehouse Fulfillment & Stock Reservation
+Evaluates stock availability across distribution hubs (`HUB_EAST`, `HUB_WEST`, `HUB_CENTRAL`). Allocates split shipments, tracks backorders, verifies delivery SLA feasibility, and acquires database transaction locks to prevent inventory overbooking under concurrent requests.
 
 ### 💳 Hybrid Recurring Billing & Payment Engine
-Handles mixed carts by separating one-time setup/equipment charges from recurring service plans. Supports `MONTHLY`, `QUARTERLY` (3-month), and `YEARLY` billing intervals. Manages payment status transitions (`ISSUED` $\rightarrow$ `PAID`), subscription cancellations (`ACTIVE` $\rightarrow$ `CANCELLED`), and transactional credit notes with eligible invoice balance caps.
+Handles mixed carts by separating one-time setup/equipment charges from recurring service plans. Supports `MONTHLY`, `QUARTERLY` (3-month), and `YEARLY` billing intervals. Manages payment status transitions (`ISSUED` $\rightarrow$ `PAID`) via authenticated service calls.
 
-### 🧾 Operational Reporting & Exports
+### 🧾 Subscription Cancellation & Credit Notes
+Implements minimal internal financial lifecycle controls: subscription cancellation (`ACTIVE` $\rightarrow$ `CANCELLED`) with duplicate protection, and transactional credit note creation (`CN-XXXXXX`) capped to eligible invoice balances.
+
+### 📈 Operational Reporting & Exports
 Features canonical dataset filtering by date range, sales representative, approval status, and product category. Exports genuine binary `.xlsx` workbooks via SheetJS and styled print-ready PDF documents.
+
+### 🔐 Security & Auditability
+Enforces server-side Role-Based Access Control (RBAC), tenant isolation, strict Zod schema payload validation, integer minor-unit money math, and persistent audit trail recording (`AuditEvent`).
 
 ---
 
