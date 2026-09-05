@@ -314,3 +314,63 @@ export interface ManualOverrideItemDTO {
   quoteLineId: string;
   warehouseId: string;
 }
+
+/** P0-2 Master Data Admin DTO Payloads */
+
+export interface CreateProductPayloadDTO {
+  sku: string;
+  name: string;
+  categoryId: string;
+  sellingPrice: number;
+  costPrice: number;
+  isActive?: boolean;
+}
+
+export interface UpdateProductPayloadDTO {
+  sku?: string;
+  name?: string;
+  categoryId?: string;
+  sellingPrice?: number;
+  costPrice?: number;
+  isActive?: boolean;
+}
+
+export interface CreateCustomerTierPayloadDTO {
+  code: string;
+  name: string;
+  maxOverallDiscount: number;
+  minMarginThreshold: number;
+}
+
+export interface UpdateCustomerTierPayloadDTO {
+  code?: string;
+  name?: string;
+  maxOverallDiscount?: number;
+  minMarginThreshold?: number;
+}
+
+export interface CreateCustomerPayloadDTO {
+  name: string;
+  tierId: string;
+  currency?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface UpdateCustomerPayloadDTO {
+  name?: string;
+  tierId?: string;
+  currency?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface CreateProductCategoryPayloadDTO {
+  code: string;
+  name: string;
+  maxCategoryDiscount: number;
+}
+
+export interface UpdateProductCategoryPayloadDTO {
+  code?: string;
+  name?: string;
+  maxCategoryDiscount?: number;
+}

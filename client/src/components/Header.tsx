@@ -6,8 +6,8 @@ interface HeaderProps {
   currentRole: DemoRole;
   onRoleChange: (role: DemoRole) => void;
   apiConnected: boolean;
-  activeTab?: 'governance' | 'fulfillment';
-  onTabChange?: (tab: 'governance' | 'fulfillment') => void;
+  activeTab?: 'governance' | 'fulfillment' | 'admin';
+  onTabChange?: (tab: 'governance' | 'fulfillment' | 'admin') => void;
   authUser?: AuthUserDTO | null;
   onOpenAuthModal?: () => void;
 }
@@ -65,6 +65,17 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               2. Fulfillment Cockpit
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('admin')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                activeTab === 'admin'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              3. Master Data Admin
             </button>
           </div>
         )}
@@ -150,6 +161,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Truck className="w-3.5 h-3.5" />
             Operations Lead
+          </button>
+          <button
+            type="button"
+            onClick={() => onRoleChange('ADMIN')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
+              currentRole === 'ADMIN'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            System Admin
           </button>
         </div>
       </div>

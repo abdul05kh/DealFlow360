@@ -2,7 +2,12 @@ import {
   APIErrorResponse,
   AuthResponseDTO,
   AuthUserDTO,
+  CreateCustomerPayloadDTO,
+  CreateCustomerTierPayloadDTO,
+  CreateProductCategoryPayloadDTO,
+  CreateProductPayloadDTO,
   CustomerDTO,
+  CustomerTierDTO,
   DemoRole,
   EvaluateQuotePayloadDTO,
   FullQuoteEvaluationDTO,
@@ -10,9 +15,14 @@ import {
   FulfillmentPlanDTO,
   LoginPayloadDTO,
   ManualOverrideItemDTO,
+  ProductCategoryDTO,
   ProductDTO,
   SavedQuoteDTO,
   SignupPayloadDTO,
+  UpdateCustomerPayloadDTO,
+  UpdateCustomerTierPayloadDTO,
+  UpdateProductCategoryPayloadDTO,
+  UpdateProductPayloadDTO,
   WarehouseDTO,
 } from '../types/api';
 
@@ -32,6 +42,8 @@ export class APIClient {
         ? 'ops_1'
         : role === 'SALES_MANAGER'
         ? 'mgr_1'
+        : role === 'ADMIN'
+        ? 'admin_1'
         : 'rep_1');
   }
 
@@ -136,18 +148,106 @@ export class APIClient {
     return response.json() as Promise<T>;
   }
 
-  async getCustomers(): Promise<CustomerDTO[]> {
-    const res = await fetch(`${API_BASE}/customers`, {
+  async getCustomers(includeInactive = false): Promise<CustomerDTO[]> {
+    const url = includeInactive ? `${API_BASE}/customers?includeInactive=true` : `${API_BASE}/customers`;
+    const res = await fetch(url, {
       headers: this.getHeaders(),
     });
     return this.handleResponse<CustomerDTO[]>(res);
   }
 
-  async getProducts(): Promise<ProductDTO[]> {
-    const res = await fetch(`${API_BASE}/products`, {
+  async createCustomer(payload: CreateCustomerPayloadDTO): Promise<CustomerDTO> {
+    const res = await fetch(`${API_BASE}/customers`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerDTO>(res);
+  }
+
+  async updateCustomer(id: string, payload: UpdateCustomerPayloadDTO): Promise<CustomerDTO> {
+    const res = await fetch(`${API_BASE}/customers/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerDTO>(res);
+  }
+
+  async getProducts(includeInactive = false): Promise<ProductDTO[]> {
+    const url = includeInactive ? `${API_BASE}/products?includeInactive=true` : `${API_BASE}/products`;
+    const res = await fetch(url, {
       headers: this.getHeaders(),
     });
     return this.handleResponse<ProductDTO[]>(res);
+  }
+
+  async createProduct(payload: CreateProductPayloadDTO): Promise<ProductDTO> {
+    const res = await fetch(`${API_BASE}/products`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<ProductDTO>(res);
+  }
+
+  async updateProduct(id: string, payload: UpdateProductPayloadDTO): Promise<ProductDTO> {
+    const res = await fetch(`${API_BASE}/products/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<ProductDTO>(res);
+  }
+
+  async getCustomerTiers(): Promise<CustomerTierDTO[]> {
+    const res = await fetch(`${API_BASE}/customer-tiers`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<CustomerTierDTO[]>(res);
+  }
+
+  async createCustomerTier(payload: CreateCustomerTierPayloadDTO): Promise<CustomerTierDTO> {
+    const res = await fetch(`${API_BASE}/customer-tiers`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerTierDTO>(res);
+  }
+
+  async updateCustomerTier(id: string, payload: UpdateCustomerTierPayloadDTO): Promise<CustomerTierDTO> {
+    const res = await fetch(`${API_BASE}/customer-tiers/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<CustomerTierDTO>(res);
+  }
+
+  async getProductCategories(): Promise<ProductCategoryDTO[]> {
+    const res = await fetch(`${API_BASE}/product-categories`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<ProductCategoryDTO[]>(res);
+  }
+
+  async createProductCategory(payload: CreateProductCategoryPayloadDTO): Promise<ProductCategoryDTO> {
+    const res = await fetch(`${API_BASE}/product-categories`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<ProductCategoryDTO>(res);
+  }
+
+  async updateProductCategory(id: string, payload: UpdateProductCategoryPayloadDTO): Promise<ProductCategoryDTO> {
+    const res = await fetch(`${API_BASE}/product-categories/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<ProductCategoryDTO>(res);
   }
 
   async evaluateQuote(

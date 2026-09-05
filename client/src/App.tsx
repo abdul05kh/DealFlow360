@@ -10,6 +10,7 @@ import {
   QuickDemoPresetBar,
   FulfillmentCockpit,
   LoginModal,
+  AdminCockpit,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
 import {
@@ -53,9 +54,10 @@ export default function App() {
     actionError,
     apiConnected,
     applyPreset,
+    refreshMasterData,
   } = useQuoteGovernance();
 
-  const [activeTab, setActiveTab] = useState<'governance' | 'fulfillment'>('governance');
+  const [activeTab, setActiveTab] = useState<'governance' | 'fulfillment' | 'admin'>('governance');
   const [approvalReason, setApprovalReason] = useState<string>('');
 
   const isSalesRep = currentRole === 'SALES_REP';
@@ -333,11 +335,16 @@ export default function App() {
               <AuditTrailDrawer savedQuote={savedQuote} />
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'fulfillment' ? (
           <FulfillmentCockpit
             currentRole={currentRole}
             activeQuote={savedQuote}
             onSwitchPersona={setRole}
+          />
+        ) : (
+          <AdminCockpit
+            currentRole={currentRole}
+            onMasterDataChanged={refreshMasterData}
           />
         )}
       </main>

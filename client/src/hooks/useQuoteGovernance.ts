@@ -67,46 +67,38 @@ export function useQuoteGovernance() {
     checkAuthSession();
   }, []);
 
-  // Load initial master data
-  useEffect(() => {
-    let isMounted = true;
-    async function loadMasterData() {
-      try {
-        const [custData, prodData] = await Promise.all([
-          apiClient.getCustomers(),
-          apiClient.getProducts(),
-        ]);
-        if (isMounted) {
-          setCustomers(custData);
-          setProducts(prodData);
-          setApiConnected(true);
+  // Load master data dynamically
+  const refreshMasterData = useCallback(async () => {
+    try {
+      const [custData, prodData] = await Promise.all([
+        apiClient.getCustomers(),
+        apiClient.getProducts(),
+      ]);
+      setCustomers(custData);
+      setProducts(prodData);
+      setApiConnected(true);
 
-          // Default selection to first customer and first product if available
-          if (custData.length > 0) {
-            setSelectedCustomerId(custData[0].id);
-          }
-          if (prodData.length > 0) {
-            setLineItems([
-              {
-                productId: prodData[0].id,
-                quantity: 1,
-                discountPercent: 10,
-              },
-            ]);
-          }
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setEvaluationError(`Master data loading failed: ${err.message}`);
-          setApiConnected(false);
-        }
+      if (custData.length > 0 && !selectedCustomerId) {
+        setSelectedCustomerId(custData[0].id);
       }
+      if (prodData.length > 0 && lineItems.length === 0) {
+        setLineItems([
+          {
+            productId: prodData[0].id,
+            quantity: 1,
+            discountPercent: 10,
+          },
+        ]);
+      }
+    } catch (err: any) {
+      setEvaluationError(`Master data loading failed: ${err.message}`);
+      setApiConnected(false);
     }
-    loadMasterData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [selectedCustomerId, lineItems.length]);
+
+  useEffect(() => {
+    refreshMasterData();
+  }, [refreshMasterData]);
 
   // Live evaluation effect with 300ms debounce & AbortController stale request protection
   useEffect(() => {
@@ -280,5 +272,6 @@ export function useQuoteGovernance() {
     actionError,
     apiConnected,
     applyPreset,
+    refreshMasterData,
   };
 }
