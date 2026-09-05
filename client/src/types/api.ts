@@ -68,7 +68,7 @@ export interface ProductDTO {
   costPrice: number;
   isActive: boolean;
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
 }
 
 export interface QuoteItemInputDTO {
@@ -96,7 +96,7 @@ export interface CalculatedLineDTO {
   lineMarginPercent: number;
   marginPercent: number;
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
 }
 
 export interface FinancialSummaryDTO {
@@ -229,7 +229,7 @@ export interface SavedQuoteLineDTO {
   lineCost: number;
   lineMargin: number;
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
 }
 
 export interface SavedQuoteDTO {
@@ -581,7 +581,7 @@ export interface SubscriptionDTO {
   customerId: string;
   customerName?: string;
   status: string;
-  billingInterval: 'MONTHLY' | 'YEARLY';
+  billingInterval: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
   recurringAmountMinor: number;
   currency: string;
   startDate: string;
@@ -604,6 +604,7 @@ export interface BillingSummaryDTO {
   };
   recurring: {
     monthlyTotalMinor: number;
+    quarterlyTotalMinor: number;
     annualTotalMinor: number;
   };
   invoice: InvoiceDTO | null;

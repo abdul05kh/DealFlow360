@@ -13,6 +13,7 @@ describe('Increment 4 — Hybrid Billing & Subscription Engine Tests', () => {
   let otherCustomerId: string;
   let testProductIdOneTime: string;
   let testProductIdRecurringMonthly: string;
+  let testProductIdRecurringQuarterly: string;
   let testProductIdRecurringYearly: string;
 
   beforeEach(async () => {
@@ -40,6 +41,24 @@ describe('Increment 4 — Hybrid Billing & Subscription Engine Tests', () => {
 
     const pMonthly = await prisma.product.findFirstOrThrow({ where: { billingType: 'RECURRING', billingInterval: 'MONTHLY' } });
     testProductIdRecurringMonthly = pMonthly.id;
+
+    let pQuarterly = await prisma.product.findFirst({ where: { billingType: 'RECURRING', billingInterval: 'QUARTERLY' } });
+    if (!pQuarterly) {
+      const cat = await prisma.productCategory.findFirstOrThrow();
+      pQuarterly = await prisma.product.create({
+        data: {
+          sku: 'SW-QTR-TEST',
+          name: 'Quarterly Support Test',
+          categoryId: cat.id,
+          costPrice: 3000,
+          sellingPrice: 12000,
+          billingType: 'RECURRING',
+          billingInterval: 'QUARTERLY',
+          isActive: true,
+        },
+      });
+    }
+    testProductIdRecurringQuarterly = pQuarterly.id;
 
     let pYearly = await prisma.product.findFirst({ where: { billingType: 'RECURRING', billingInterval: 'YEARLY' } });
     if (!pYearly) {
@@ -642,5 +661,101 @@ describe('Increment 4 — Hybrid Billing & Subscription Engine Tests', () => {
 
     expect(payRes.status).toBe(200);
     expect(payRes.body.totalMinor).toBe(originalTotalMinor);
+  });
+
+  it('21. Generates QUARTERLY subscription with correct 3-month next billing date schedule', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdRecurringQuarterly, quantity: 2, discountPercent: 0 }],
+      });
+
+    expect(createRes.status).toBe(201);
+    const quoteId = createRes.body.id;
+
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    expect(billingRes.status).toBe(201);
+    expect(billingRes.body.subscriptions.length).toBe(1);
+
+    const sub = billingRes.body.subscriptions[0];
+    expect(sub.billingInterval).toBe('QUARTERLY');
+    expect(sub.subscriptionNumber).toContain('SUB-Q-');
+
+    const startDate = new Date(sub.startDate);
+    const nextDate = new Date(sub.nextBillingDate);
+    const diffDays = Math.round((nextDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBeGreaterThanOrEqual(88);
+    expect(diffDays).toBeLessThanOrEqual(93);
+
+    expect(billingRes.body.recurring.quarterlyTotalMinor).toBe(sub.recurringAmountMinor);
+  });
+
+  it('22. Correctly calculates recurring run rates across hybrid ONE_TIME + QUARTERLY + MONTHLY items', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [
+          { productId: testProductIdOneTime, quantity: 1, discountPercent: 0 },
+          { productId: testProductIdRecurringMonthly, quantity: 2, discountPercent: 0 },
+          { productId: testProductIdRecurringQuarterly, quantity: 3, discountPercent: 0 },
+        ],
+      });
+
+    expect(createRes.status).toBe(201);
+    const quoteId = createRes.body.id;
+
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    expect(billingRes.status).toBe(201);
+    expect(billingRes.body.invoice).not.toBeNull();
+    expect(billingRes.body.subscriptions.length).toBe(2);
+
+    const monthlySub = billingRes.body.subscriptions.find((s: any) => s.billingInterval === 'MONTHLY');
+    const quarterlySub = billingRes.body.subscriptions.find((s: any) => s.billingInterval === 'QUARTERLY');
+
+    expect(monthlySub).toBeDefined();
+    expect(quarterlySub).toBeDefined();
+
+    const expectedAnnual = (monthlySub.recurringAmountMinor * 12) + (quarterlySub.recurringAmountMinor * 4);
+    expect(billingRes.body.recurring.annualTotalMinor).toBe(expectedAnnual);
+  });
+
+  it('23. Preserves integer minor-unit money for quarterly billing calculations', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdRecurringQuarterly, quantity: 3, discountPercent: 12.5 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    expect(billingRes.status).toBe(201);
+    const sub = billingRes.body.subscriptions[0];
+    expect(Number.isInteger(sub.recurringAmountMinor)).toBe(true);
+    expect(Number.isInteger(sub.lines[0].unitPriceMinor)).toBe(true);
+    expect(Number.isInteger(sub.lines[0].netTotalMinor)).toBe(true);
   });
 });

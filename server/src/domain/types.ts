@@ -39,7 +39,7 @@ export interface ProductDomain {
   sellingPrice: number; // Major unit (e.g. 150000.00)
   costPrice: number;    // Major unit (e.g. 90000.00)
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
   isActive: boolean;
 }
 
@@ -83,7 +83,7 @@ export interface QuoteLineInput {
   requestedUnitPrice?: number; // Optional custom price requested by client
   discountPercent: number;
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
 }
 
 export interface QuoteEvaluationInput {
@@ -106,7 +106,7 @@ export interface CalculatedLine {
   lineMargin: number;      // Major units
   lineMarginPercent: number;
   billingType?: 'ONE_TIME' | 'RECURRING';
-  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
+  billingInterval?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
 }
 
 export interface FinancialSummary {
@@ -357,7 +357,7 @@ export interface SubscriptionDTO {
   customerId: string;
   customerName?: string;
   status: string;
-  billingInterval: 'MONTHLY' | 'YEARLY';
+  billingInterval: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
   recurringAmountMinor: number;
   currency: string;
   startDate: string;
@@ -380,6 +380,7 @@ export interface BillingSummaryDTO {
   };
   recurring: {
     monthlyTotalMinor: number;
+    quarterlyTotalMinor: number;
     annualTotalMinor: number;
   };
   invoice: InvoiceDTO | null;

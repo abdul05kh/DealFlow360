@@ -82,7 +82,7 @@ export class BillingService {
       const subtotalMinor = Math.round(line.subtotal * 100);
       const netTotalMinor = Math.round(line.netTotal * 100);
       const billingType = (line.billingType || line.product.billingType || 'ONE_TIME') as 'ONE_TIME' | 'RECURRING';
-      const billingInterval = (line.billingInterval || line.product.billingInterval || 'MONTHLY') as 'MONTHLY' | 'YEARLY';
+      const billingInterval = (line.billingInterval || line.product.billingInterval || 'MONTHLY') as 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 
       return {
         quoteLineId: line.id,
@@ -139,8 +139,9 @@ export class BillingService {
         });
       }
 
-      // Group recurring items by interval (MONTHLY vs YEARLY)
+      // Group recurring items by interval (MONTHLY vs QUARTERLY vs YEARLY)
       const monthlyLines = recurringLines.filter((l) => l.billingInterval === 'MONTHLY');
+      const quarterlyLines = recurringLines.filter((l) => l.billingInterval === 'QUARTERLY');
       const yearlyLines = recurringLines.filter((l) => l.billingInterval === 'YEARLY');
 
       if (monthlyLines.length > 0) {
@@ -163,6 +164,40 @@ export class BillingService {
             nextBillingDate,
             lines: {
               create: monthlyLines.map((l) => ({
+                quoteLineId: l.quoteLineId,
+                productId: l.productId,
+                description: l.description,
+                quantity: l.quantity,
+                unitPriceMinor: l.unitPriceMinor,
+                discountPercent: l.discountPercent,
+                discountAmountMinor: l.discountAmountMinor,
+                netTotalMinor: l.netTotalMinor,
+              })),
+            },
+          },
+        });
+      }
+
+      if (quarterlyLines.length > 0) {
+        const recurringAmountMinor = quarterlyLines.reduce((sum, l) => sum + l.netTotalMinor, 0);
+        const subscriptionNumber = `SUB-Q-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+        const startDate = new Date();
+        const nextBillingDate = new Date();
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
+
+        await tx.subscription.create({
+          data: {
+            subscriptionNumber,
+            quoteId: quote.id,
+            customerId: quote.customerId,
+            status: 'ACTIVE',
+            billingInterval: 'QUARTERLY',
+            recurringAmountMinor,
+            currency: quote.customer.currency || 'INR',
+            startDate,
+            nextBillingDate,
+            lines: {
+              create: quarterlyLines.map((l) => ({
                 quoteLineId: l.quoteLineId,
                 productId: l.productId,
                 description: l.description,
@@ -408,7 +443,7 @@ export class BillingService {
       customerId: sub.customerId,
       customerName: quote.customer.name,
       status: sub.status,
-      billingInterval: sub.billingInterval as 'MONTHLY' | 'YEARLY',
+      billingInterval: sub.billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY',
       recurringAmountMinor: sub.recurringAmountMinor,
       currency: sub.currency,
       startDate: sub.startDate.toISOString(),
@@ -437,9 +472,16 @@ export class BillingService {
       .filter((s) => s.billingInterval === 'MONTHLY')
       .reduce((sum, s) => sum + s.recurringAmountMinor, 0);
 
-    const annualTotalMinor = subscriptionsDTO
-      .filter((s) => s.billingInterval === 'YEARLY')
-      .reduce((sum, s) => sum + s.recurringAmountMinor, 0) + (monthlyTotalMinor * 12);
+    const quarterlyTotalMinor = subscriptionsDTO
+      .filter((s) => s.billingInterval === 'QUARTERLY')
+      .reduce((sum, s) => sum + s.recurringAmountMinor, 0);
+
+    const annualTotalMinor =
+      subscriptionsDTO
+        .filter((s) => s.billingInterval === 'YEARLY')
+        .reduce((sum, s) => sum + s.recurringAmountMinor, 0) +
+      quarterlyTotalMinor * 4 +
+      monthlyTotalMinor * 12;
 
     return {
       quoteId: quote.id,
@@ -455,6 +497,7 @@ export class BillingService {
       },
       recurring: {
         monthlyTotalMinor,
+        quarterlyTotalMinor,
         annualTotalMinor,
       },
       invoice: invoiceDTO,
@@ -518,7 +561,7 @@ export class BillingService {
       customerId: sub.customerId,
       customerName: sub.customer.name,
       status: sub.status,
-      billingInterval: sub.billingInterval as 'MONTHLY' | 'YEARLY',
+      billingInterval: sub.billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY',
       recurringAmountMinor: sub.recurringAmountMinor,
       currency: sub.currency,
       startDate: sub.startDate.toISOString(),

@@ -161,7 +161,7 @@ export class MasterDataService {
       sellingPrice: p.sellingPrice,
       costPrice: p.costPrice,
       billingType: p.billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
-      billingInterval: p.billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
+      billingInterval: p.billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null || 'MONTHLY',
       isActive: p.isActive,
     }));
   }
@@ -223,7 +223,7 @@ export class MasterDataService {
       sellingPrice: product.sellingPrice,
       costPrice: product.costPrice,
       billingType: (product as any).billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
-      billingInterval: (product as any).billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
+      billingInterval: (product as any).billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null || 'MONTHLY',
       isActive: product.isActive,
     };
   }
@@ -254,7 +254,7 @@ export class MasterDataService {
         sellingPrice: p.sellingPrice,
         costPrice: p.costPrice,
         billingType: (p as any).billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
-        billingInterval: (p as any).billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
+        billingInterval: (p as any).billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null || 'MONTHLY',
         isActive: p.isActive,
       });
     }

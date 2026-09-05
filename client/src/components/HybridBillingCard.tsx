@@ -178,14 +178,25 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">Subscription</span>
               </div>
-              <div className="text-lg font-bold text-emerald-400 font-mono">
-                {summary.recurring.monthlyTotalMinor > 0 && formatMinorCurrency(summary.recurring.monthlyTotalMinor, summary.currency) + '/mo'}
-                {summary.recurring.monthlyTotalMinor > 0 && summary.recurring.annualTotalMinor > 0 && ' + '}
-                {summary.recurring.annualTotalMinor > 0 && formatMinorCurrency(summary.recurring.annualTotalMinor, summary.currency) + '/yr'}
-                {summary.recurring.monthlyTotalMinor === 0 && summary.recurring.annualTotalMinor === 0 && formatMinorCurrency(0, summary.currency)}
+              <div className="text-sm font-bold text-emerald-400 font-mono flex flex-wrap items-center gap-x-2">
+                {summary.recurring.monthlyTotalMinor > 0 && (
+                  <span>{formatMinorCurrency(summary.recurring.monthlyTotalMinor, summary.currency)}/mo</span>
+                )}
+                {summary.recurring.quarterlyTotalMinor > 0 && (
+                  <span>{formatMinorCurrency(summary.recurring.quarterlyTotalMinor, summary.currency)}/qtr</span>
+                )}
+                {summary.recurring.annualTotalMinor > 0 && (
+                  <span>{formatMinorCurrency(summary.recurring.annualTotalMinor, summary.currency)}/yr</span>
+                )}
+                {summary.recurring.monthlyTotalMinor === 0 &&
+                  summary.recurring.quarterlyTotalMinor === 0 &&
+                  summary.recurring.annualTotalMinor === 0 && (
+                    <span>{formatMinorCurrency(0, summary.currency)}</span>
+                  )}
               </div>
               <div className="text-[10px] text-slate-400 flex justify-between font-mono pt-1 border-t border-slate-800/80">
                 <span>Mo: {formatMinorCurrency(summary.recurring.monthlyTotalMinor, summary.currency)}</span>
+                <span>Qtr: {formatMinorCurrency(summary.recurring.quarterlyTotalMinor, summary.currency)}</span>
                 <span>Yr: {formatMinorCurrency(summary.recurring.annualTotalMinor, summary.currency)}</span>
               </div>
             </div>

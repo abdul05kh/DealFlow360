@@ -12,7 +12,7 @@ export const EvaluateQuoteItemSchema = z
       .min(0, 'Discount percentage cannot be negative')
       .max(100, 'Discount percentage cannot exceed 100%'),
     billingType: z.enum(['ONE_TIME', 'RECURRING']).optional(),
-    billingInterval: z.enum(['MONTHLY', 'YEARLY']).nullable().optional(),
+    billingInterval: z.enum(['MONTHLY', 'QUARTERLY', 'YEARLY']).nullable().optional(),
   })
   .strict('Unexpected payload fields detected. Server authority rejects client-supplied commercial or governance overrides.');
 
