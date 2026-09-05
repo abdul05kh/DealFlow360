@@ -2,6 +2,7 @@ import {
   APIErrorResponse,
   AuthResponseDTO,
   AuthUserDTO,
+  BillingSummaryDTO,
   CreateCustomerPayloadDTO,
   CreateCustomerTierPayloadDTO,
   CreateOperatorPayloadDTO,
@@ -16,6 +17,7 @@ import {
   FullQuoteEvaluationDTO,
   FulfillmentEvaluationResponseDTO,
   FulfillmentPlanDTO,
+  InvoiceDTO,
   LoginPayloadDTO,
   ManualOverrideItemDTO,
   OperatorCustomerRequestDTO,
@@ -26,6 +28,7 @@ import {
   SavedQuoteDTO,
   SignupPayloadDTO,
   SubmitNegotiationPayloadDTO,
+  SubscriptionDTO,
   UpdateCustomerPayloadDTO,
   UpdateCustomerTierPayloadDTO,
   UpdateOperatorPayloadDTO,
@@ -470,6 +473,31 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<OperatorCustomerRequestDTO[]>(res);
+  }
+
+  /** Increment 4 — Hybrid Billing Endpoints */
+
+  async generateBillingForQuote(quoteId: string): Promise<BillingSummaryDTO> {
+    const res = await fetch(`${API_BASE}/quotes/${encodeURIComponent(quoteId)}/billing`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({}),
+    });
+    return this.handleResponse<BillingSummaryDTO>(res);
+  }
+
+  async getBillingSummaryForQuote(quoteId: string): Promise<BillingSummaryDTO> {
+    const res = await fetch(`${API_BASE}/quotes/${encodeURIComponent(quoteId)}/billing`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<BillingSummaryDTO>(res);
+  }
+
+  async getCustomerBilling(): Promise<{ invoices: InvoiceDTO[]; subscriptions: SubscriptionDTO[] }> {
+    const res = await fetch(`${API_BASE}/customer/billing`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<{ invoices: InvoiceDTO[]; subscriptions: SubscriptionDTO[] }>(res);
   }
 }
 

@@ -143,6 +143,8 @@ export class QuoteService {
               netTotal: line.netTotal,
               lineCost: line.lineCost,
               lineMargin: line.lineMargin,
+              billingType: line.billingType || 'ONE_TIME',
+              billingInterval: line.billingInterval || null,
             })),
           },
         },

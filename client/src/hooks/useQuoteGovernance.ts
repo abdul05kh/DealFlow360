@@ -292,6 +292,7 @@ export function useQuoteGovernance() {
     isEvaluating,
     evaluationError,
     savedQuote,
+    setSavedQuote,
     submitQuote,
     approveQuote,
     rejectQuote,

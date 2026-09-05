@@ -120,6 +120,8 @@ async function main() {
       categoryId: hardware.id,
       sellingPrice: 150000.0,
       costPrice: 90000.0,
+      billingType: 'ONE_TIME',
+      billingInterval: null,
       isActive: true,
     },
   });
@@ -132,6 +134,8 @@ async function main() {
       categoryId: hardware.id,
       sellingPrice: 80000.0,
       costPrice: 50000.0,
+      billingType: 'ONE_TIME',
+      billingInterval: null,
       isActive: true,
     },
   });
@@ -144,6 +148,8 @@ async function main() {
       categoryId: services.id,
       sellingPrice: 50000.0,
       costPrice: 30000.0,
+      billingType: 'ONE_TIME',
+      billingInterval: null,
       isActive: true,
     },
   });
@@ -156,6 +162,8 @@ async function main() {
       categoryId: services.id,
       sellingPrice: 100000.0,
       costPrice: 40000.0,
+      billingType: 'RECURRING',
+      billingInterval: 'MONTHLY',
       isActive: true,
     },
   });
@@ -168,6 +176,8 @@ async function main() {
       categoryId: software.id,
       sellingPrice: 200000.0,
       costPrice: 60000.0,
+      billingType: 'RECURRING',
+      billingInterval: 'MONTHLY',
       isActive: true,
     },
   });
@@ -180,6 +190,8 @@ async function main() {
       categoryId: software.id,
       sellingPrice: 25000.0,
       costPrice: 5000.0,
+      billingType: 'RECURRING',
+      billingInterval: 'YEARLY',
       isActive: true,
     },
   });

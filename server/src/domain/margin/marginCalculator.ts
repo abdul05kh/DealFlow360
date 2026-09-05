@@ -109,6 +109,8 @@ export class MarginCalculator {
         lineCost: lineCostMinor / 100,
         lineMargin: lineMarginMinor / 100,
         lineMarginPercent,
+        billingType: input.billingType || product.billingType || 'ONE_TIME',
+        billingInterval: input.billingInterval !== undefined ? input.billingInterval : (product.billingInterval || null),
       });
     }
 

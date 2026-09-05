@@ -19,15 +19,17 @@ model CustomerTier {
 }
 
 model Customer {
-  id        String             @id @default(uuid())
-  name      String
-  tierId    String
-  tier      CustomerTier       @relation(fields: [tierId], references: [id])
-  currency  String             @default("INR")
-  status    String             @default("ACTIVE")
-  quotes    Quote[]
-  users     User[]
-  negotiations QuoteNegotiation[]
+  id            String             @id @default(uuid())
+  name          String
+  tierId        String
+  tier          CustomerTier       @relation(fields: [tierId], references: [id])
+  currency      String             @default("INR")
+  status        String             @default("ACTIVE")
+  quotes        Quote[]
+  users         User[]
+  negotiations  QuoteNegotiation[]
+  invoices      Invoice[]
+  subscriptions Subscription[]
 }
 
 model ProductCategory {
@@ -40,19 +42,23 @@ model ProductCategory {
 }
 
 model Product {
-  id               String            @id @default(uuid())
-  sku              String            @unique
-  name             String
-  categoryId       String
-  category         ProductCategory   @relation(fields: [categoryId], references: [id])
-  costPrice        Float
-  sellingPrice     Float
-  isActive         Boolean           @default(true)
-  quoteLines       QuoteLine[]
-  triggerRules     CrossSellRule[]   @relation("TriggerProduct")
-  recommendedRules CrossSellRule[]   @relation("RecommendedProduct")
-  inventoryStocks  InventoryStock[]
-  fulfillmentItems FulfillmentItem[]
+  id                String             @id @default(uuid())
+  sku               String             @unique
+  name              String
+  categoryId        String
+  category          ProductCategory    @relation(fields: [categoryId], references: [id])
+  costPrice         Float
+  sellingPrice      Float
+  billingType       String             @default("ONE_TIME") // 'ONE_TIME' | 'RECURRING'
+  billingInterval   String?            @default("MONTHLY")  // 'MONTHLY' | 'YEARLY'
+  isActive          Boolean            @default(true)
+  quoteLines        QuoteLine[]
+  triggerRules      CrossSellRule[]    @relation("TriggerProduct")
+  recommendedRules  CrossSellRule[]    @relation("RecommendedProduct")
+  inventoryStocks   InventoryStock[]
+  fulfillmentItems  FulfillmentItem[]
+  invoiceLines      InvoiceLine[]
+  subscriptionLines SubscriptionLine[]
 }
 
 model User {
@@ -92,12 +98,12 @@ model ApprovalRule {
 }
 
 model Quote {
-  id                   String            @id @default(uuid())
-  quoteNumber          String            @unique
+  id                   String             @id @default(uuid())
+  quoteNumber          String             @unique
   customerId           String
-  customer             Customer          @relation(fields: [customerId], references: [id])
+  customer             Customer           @relation(fields: [customerId], references: [id])
   salesRepId           String
-  salesRep             User              @relation("QuotesCreated", fields: [salesRepId], references: [id])
+  salesRep             User               @relation("QuotesCreated", fields: [salesRepId], references: [id])
   status               String
   grossRevenue         Float
   discountAmount       Float
@@ -109,31 +115,103 @@ model Quote {
   riskScore            Float
   riskReasonsJson      String
   requiredApproverRole String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   lines                QuoteLine[]
   approvalRequests     ApprovalRequest[]
   fulfillmentPlan      FulfillmentPlan?
   negotiations         QuoteNegotiation[]
+  invoice              Invoice?
+  subscriptions        Subscription[]
 }
 
 model QuoteLine {
-  id               String                 @id @default(uuid())
-  quoteId          String
-  quote            Quote                  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product                @relation(fields: [productId], references: [id])
-  quantity         Int
-  unitPrice        Float
-  unitCost         Float
-  discountPercent  Float
-  discountAmount   Float
-  subtotal         Float
-  netTotal         Float
-  lineCost         Float
-  lineMargin       Float
-  fulfillmentItems FulfillmentItem[]
-  negotiationLines QuoteNegotiationLine[]
+  id                String                 @id @default(uuid())
+  quoteId           String
+  quote             Quote                  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product                @relation(fields: [productId], references: [id])
+  quantity          Int
+  unitPrice         Float
+  unitCost          Float
+  discountPercent   Float
+  discountAmount    Float
+  subtotal          Float
+  netTotal          Float
+  lineCost          Float
+  lineMargin        Float
+  billingType       String                 @default("ONE_TIME") // 'ONE_TIME' | 'RECURRING'
+  billingInterval   String?                @default("MONTHLY")  // 'MONTHLY' | 'YEARLY'
+  fulfillmentItems  FulfillmentItem[]
+  negotiationLines  QuoteNegotiationLine[]
+  invoiceLines      InvoiceLine[]
+  subscriptionLines SubscriptionLine[]
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  quoteId       String        @unique
+  quote         Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  status        String        @default("ISSUED") // 'ISSUED' | 'PAID'
+  currency      String        @default("INR")
+  subtotalMinor Int
+  discountMinor Int
+  totalMinor    Int
+  createdAt     DateTime      @default(now())
+  lines         InvoiceLine[]
+}
+
+model InvoiceLine {
+  id                  String     @id @default(uuid())
+  invoiceId           String
+  invoice             Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  quoteLineId         String?
+  quoteLine           QuoteLine? @relation(fields: [quoteLineId], references: [id])
+  productId           String
+  product             Product    @relation(fields: [productId], references: [id])
+  description         String
+  quantity            Int
+  unitPriceMinor      Int
+  discountPercent     Float
+  discountAmountMinor Int
+  netTotalMinor       Int
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  subscriptionNumber   String             @unique
+  quoteId              String
+  quote                Quote              @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  customerId           String
+  customer             Customer           @relation(fields: [customerId], references: [id])
+  status               String             @default("ACTIVE") // 'ACTIVE' | 'CANCELLED'
+  billingInterval      String             // 'MONTHLY' | 'YEARLY'
+  recurringAmountMinor Int
+  currency             String             @default("INR")
+  startDate            DateTime           @default(now())
+  nextBillingDate      DateTime
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  lines                SubscriptionLine[]
+}
+
+model SubscriptionLine {
+  id                  String       @id @default(uuid())
+  subscriptionId      String
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  quoteLineId         String?
+  quoteLine           QuoteLine?   @relation(fields: [quoteLineId], references: [id])
+  productId           String
+  product             Product      @relation(fields: [productId], references: [id])
+  description         String
+  quantity            Int
+  unitPriceMinor      Int
+  discountPercent     Float
+  discountAmountMinor Int
+  netTotalMinor       Int
 }
 
 model QuoteNegotiation {

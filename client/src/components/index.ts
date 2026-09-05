@@ -16,3 +16,4 @@ export { CustomerPortalView } from './CustomerPortal/CustomerPortalView';
 export { LoginView } from './Auth/LoginView';
 export { OperatorAdminCard } from './Admin/OperatorAdminCard';
 export { CustomerRequestsQueue } from './Operator/CustomerRequestsQueue';
+export { HybridBillingCard } from './HybridBillingCard';

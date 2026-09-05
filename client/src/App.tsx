@@ -14,6 +14,7 @@ import {
   CustomerPortalView,
   LoginView,
   CustomerRequestsQueue,
+  HybridBillingCard,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
 import {
@@ -52,6 +53,7 @@ export default function App() {
     isEvaluating,
     evaluationError,
     savedQuote,
+    setSavedQuote,
     submitQuote,
     approveQuote,
     rejectQuote,
@@ -388,6 +390,16 @@ export default function App() {
                 financials={evaluation?.financials || null}
                 marginRealization={evaluation?.marginRealization || null}
                 isEvaluating={isEvaluating}
+              />
+
+              <HybridBillingCard
+                quoteId={savedQuote?.id}
+                quoteStatus={savedQuote?.status}
+                onBillingGenerated={() => {
+                  if (savedQuote) {
+                    setSavedQuote({ ...savedQuote, status: 'BILLING_CREATED' });
+                  }
+                }}
               />
 
               <GovernanceRiskRadar

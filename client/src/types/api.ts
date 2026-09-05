@@ -67,6 +67,8 @@ export interface ProductDTO {
   sellingPrice: number;
   costPrice: number;
   isActive: boolean;
+  billingType?: 'ONE_TIME' | 'RECURRING';
+  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
 }
 
 export interface QuoteItemInputDTO {
@@ -92,6 +94,9 @@ export interface CalculatedLineDTO {
   lineCost: number;
   lineMargin: number;
   lineMarginPercent: number;
+  marginPercent: number;
+  billingType?: 'ONE_TIME' | 'RECURRING';
+  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
 }
 
 export interface FinancialSummaryDTO {
@@ -138,7 +143,8 @@ export type QuoteStatus =
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'REJECTED'
-  | 'REVISION_REQUIRED';
+  | 'REVISION_REQUIRED'
+  | 'BILLING_CREATED';
 
 export interface ApprovalDecisionDTO {
   quoteStatus: QuoteStatus;
@@ -222,6 +228,8 @@ export interface SavedQuoteLineDTO {
   netTotal: number;
   lineCost: number;
   lineMargin: number;
+  billingType?: 'ONE_TIME' | 'RECURRING';
+  billingInterval?: 'MONTHLY' | 'YEARLY' | null;
 }
 
 export interface SavedQuoteDTO {
@@ -520,4 +528,84 @@ export interface OperatorCustomerRequestDTO {
     unitPrice?: number;
     customerNote?: string | null;
   }>;
+}
+
+/** Increment 4 — Hybrid Billing DTOs (Integer Minor Units) */
+export interface InvoiceLineDTO {
+  id: string;
+  quoteLineId?: string | null;
+  productId: string;
+  productName: string;
+  sku: string;
+  description: string;
+  quantity: number;
+  unitPriceMinor: number;
+  discountPercent: number;
+  discountAmountMinor: number;
+  netTotalMinor: number;
+}
+
+export interface InvoiceDTO {
+  id: string;
+  invoiceNumber: string;
+  quoteId: string;
+  customerId: string;
+  customerName?: string;
+  status: string;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  createdAt: string;
+  lines: InvoiceLineDTO[];
+}
+
+export interface SubscriptionLineDTO {
+  id: string;
+  quoteLineId?: string | null;
+  productId: string;
+  productName: string;
+  sku: string;
+  description: string;
+  quantity: number;
+  unitPriceMinor: number;
+  discountPercent: number;
+  discountAmountMinor: number;
+  netTotalMinor: number;
+}
+
+export interface SubscriptionDTO {
+  id: string;
+  subscriptionNumber: string;
+  quoteId: string;
+  customerId: string;
+  customerName?: string;
+  status: string;
+  billingInterval: 'MONTHLY' | 'YEARLY';
+  recurringAmountMinor: number;
+  currency: string;
+  startDate: string;
+  nextBillingDate: string;
+  createdAt: string;
+  lines: SubscriptionLineDTO[];
+}
+
+export interface BillingSummaryDTO {
+  quoteId: string;
+  quoteNumber: string;
+  customerId: string;
+  customerName: string;
+  currency: string;
+  quoteStatus: string;
+  dueNow: {
+    subtotalMinor: number;
+    discountMinor: number;
+    totalMinor: number;
+  };
+  recurring: {
+    monthlyTotalMinor: number;
+    annualTotalMinor: number;
+  };
+  invoice: InvoiceDTO | null;
+  subscriptions: SubscriptionDTO[];
 }

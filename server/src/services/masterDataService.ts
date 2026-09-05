@@ -39,6 +39,8 @@ interface ProductRecord {
   };
   sellingPrice: number;
   costPrice: number;
+  billingType?: string;
+  billingInterval?: string | null;
   isActive: boolean;
 }
 
@@ -147,6 +149,8 @@ export class MasterDataService {
       },
       sellingPrice: p.sellingPrice,
       costPrice: p.costPrice,
+      billingType: p.billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
+      billingInterval: p.billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
       isActive: p.isActive,
     }));
   }
@@ -207,6 +211,8 @@ export class MasterDataService {
       category: categoryDomain,
       sellingPrice: product.sellingPrice,
       costPrice: product.costPrice,
+      billingType: (product as any).billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
+      billingInterval: (product as any).billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
       isActive: product.isActive,
     };
   }
@@ -236,6 +242,8 @@ export class MasterDataService {
         category: categoryDomain,
         sellingPrice: p.sellingPrice,
         costPrice: p.costPrice,
+        billingType: (p as any).billingType as 'ONE_TIME' | 'RECURRING' || 'ONE_TIME',
+        billingInterval: (p as any).billingInterval as 'MONTHLY' | 'YEARLY' | null || 'MONTHLY',
         isActive: p.isActive,
       });
     }

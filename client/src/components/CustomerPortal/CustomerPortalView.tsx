@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../services/api';
 import { CustomerQuoteDTO, CustomerQuoteLineDTO, CustomerNegotiationDTO } from '../../types/api';
+import { HybridBillingCard } from '../HybridBillingCard';
 
 interface CustomerPortalViewProps {
   apiConnected: boolean;
@@ -295,6 +296,13 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({ apiConne
                   </div>
                 </div>
               </div>
+
+              {/* Hybrid Billing Overview */}
+              <HybridBillingCard
+                quoteId={selectedQuote.id}
+                quoteStatus={selectedQuote.status}
+                onBillingGenerated={fetchQuotes}
+              />
 
               {/* Offered Lines Table */}
               <div>

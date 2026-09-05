@@ -9,6 +9,7 @@ import { fulfillmentRouter } from './routes/fulfillmentRoutes';
 import { healthRouter } from './routes/health';
 import { masterDataRouter } from './routes/masterDataRoutes';
 import { quoteRouter } from './routes/quoteRoutes';
+import { billingRouter } from './routes/billingRoutes';
 
 export const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/v1', adminRouter);
 app.use('/api/v1', operatorRouter);
 app.use('/api/v1', masterDataRouter);
 app.use('/api/v1', fulfillmentRouter);
+app.use('/api/v1', billingRouter);
 app.use('/api/v1/quotes', quoteRouter);
 app.use('/api/v1/customer', customerRouter);
 
