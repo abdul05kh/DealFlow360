@@ -218,34 +218,37 @@ graph TD
 - **Node.js**: v20.x or higher
 - **npm**: v10.x or higher
 
-### Setup Commands
+### Environment Configuration
+Default local development uses safe local defaults configured in `.env` (SQLite `dev.db` and development JWT secrets). No external cloud credentials are required to execute local tests or run dev servers.
 
-1. **Clone & Install**:
+### Step-by-Step Installation
+
+1. **Clone Repository & Install Dependencies**:
    ```bash
    git clone https://github.com/abdul05kh/DealFlow360.git
    cd DealFlow360
    npm install
    ```
 
-2. **Database Migration & Seed**:
+2. **Migrate Database & Seed Master Data**:
    ```bash
    npm run db:migrate
    npm run db:seed
    ```
 
-3. **Start Development Servers (Backend + Frontend)**:
+3. **Start Development Servers (Server & Client)**:
    ```bash
    npm run dev:all
    ```
-   - Frontend UI: `http://localhost:3000`
-   - Backend API: `http://localhost:3001`
+   - **Client App**: `http://localhost:3000`
+   - **Server API**: `http://localhost:3001`
 
-4. **Run Automated Test Suite**:
+4. **Execute Automated Test Suite**:
    ```bash
    npm test
    ```
 
-5. **Build Production Bundle**:
+5. **Build Production Application**:
    ```bash
    npm run build
    ```
