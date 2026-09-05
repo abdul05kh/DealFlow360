@@ -1,12 +1,3 @@
-import type {
-  ApprovalRule,
-  CrossSellRule,
-  Customer,
-  CustomerTier,
-  DiscountPolicy,
-  Product,
-  ProductCategory,
-} from '@prisma/client';
 import { prisma } from '../db/client';
 import {
   ApprovalRuleDomain,
@@ -19,8 +10,62 @@ import {
   UserDomain,
 } from '../domain/types';
 
-type CustomerWithTier = Customer & { tier: CustomerTier };
-type ProductWithCategory = Product & { category: ProductCategory };
+interface CustomerRecord {
+  id: string;
+  name: string;
+  tierId: string;
+  tier: {
+    id: string;
+    code: string;
+    name: string;
+    maxOverallDiscount: number;
+    minMarginThreshold: number;
+  };
+  currency: string;
+  status: string;
+}
+
+interface ProductRecord {
+  id: string;
+  sku: string;
+  name: string;
+  categoryId: string;
+  category: {
+    id: string;
+    code: string;
+    name: string;
+    maxCategoryDiscount: number;
+  };
+  sellingPrice: number;
+  costPrice: number;
+  isActive: boolean;
+}
+
+interface DiscountPolicyRecord {
+  id: string;
+  name: string;
+  tierId: string | null;
+  categoryId: string | null;
+  maxDiscountPercent: number;
+  riskSeverity: string;
+  requiresApproval: boolean;
+}
+
+interface ApprovalRuleRecord {
+  id: string;
+  name: string;
+  minRiskLevel: string;
+  requiredRole: string;
+  autoApproveEligible: boolean;
+}
+
+interface CrossSellRuleRecord {
+  id: string;
+  triggerProductId: string;
+  recommendedProductId: string;
+  reasonTemplate: string;
+  minMarginPercent: number;
+}
 
 export class MasterDataService {
   /**
@@ -32,7 +77,7 @@ export class MasterDataService {
       include: { tier: true },
     });
 
-    return customers.map((c: CustomerWithTier) => ({
+    return customers.map((c: CustomerRecord) => ({
       id: c.id,
       name: c.name,
       tierId: c.tierId,
@@ -57,7 +102,7 @@ export class MasterDataService {
       include: { category: true },
     });
 
-    return products.map((p: ProductWithCategory) => ({
+    return products.map((p: ProductRecord) => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
@@ -169,7 +214,7 @@ export class MasterDataService {
    */
   async getAllDiscountPolicies(): Promise<DiscountPolicyDomain[]> {
     const policies = await prisma.discountPolicy.findMany();
-    return policies.map((p: DiscountPolicy) => ({
+    return policies.map((p: DiscountPolicyRecord) => ({
       id: p.id,
       name: p.name,
       tierId: p.tierId,
@@ -185,7 +230,7 @@ export class MasterDataService {
    */
   async getAllApprovalRules(): Promise<ApprovalRuleDomain[]> {
     const rules = await prisma.approvalRule.findMany();
-    return rules.map((r: ApprovalRule) => ({
+    return rules.map((r: ApprovalRuleRecord) => ({
       id: r.id,
       name: r.name,
       minRiskLevel: r.minRiskLevel as 'LOW' | 'MEDIUM' | 'HIGH',
@@ -199,7 +244,7 @@ export class MasterDataService {
    */
   async getCrossSellRules(): Promise<CrossSellRuleDomain[]> {
     const rules = await prisma.crossSellRule.findMany();
-    return rules.map((r: CrossSellRule) => ({
+    return rules.map((r: CrossSellRuleRecord) => ({
       id: r.id,
       triggerProductId: r.triggerProductId,
       recommendedProductId: r.recommendedProductId,
