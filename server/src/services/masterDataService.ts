@@ -1,26 +1,35 @@
+import type { ApprovalRule, CrossSellRule, DiscountPolicy, Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import {
-  CustomerDomain,
-  CustomerTierDomain,
-  ProductCategoryDomain,
-  ProductDomain,
-  DiscountPolicyDomain,
   ApprovalRuleDomain,
   CrossSellRuleDomain,
+  CustomerDomain,
+  CustomerTierDomain,
+  DiscountPolicyDomain,
+  ProductCategoryDomain,
+  ProductDomain,
   UserDomain,
 } from '../domain/types';
+
+type CustomerWithTier = Prisma.CustomerGetPayload<{
+  include: { tier: true };
+}>;
+
+type ProductWithCategory = Prisma.ProductGetPayload<{
+  include: { category: true };
+}>;
 
 export class MasterDataService {
   /**
    * Retrieves all active customers with tier information.
    */
   async getAllCustomers(): Promise<CustomerDomain[]> {
-    const customers = await prisma.customer.findMany({
+    const customers: CustomerWithTier[] = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
       include: { tier: true },
     });
 
-    return customers.map((c) => ({
+    return customers.map((c: CustomerWithTier): CustomerDomain => ({
       id: c.id,
       name: c.name,
       tierId: c.tierId,
@@ -40,12 +49,12 @@ export class MasterDataService {
    * Retrieves all active products with category information.
    */
   async getAllProducts(): Promise<ProductDomain[]> {
-    const products = await prisma.product.findMany({
+    const products: ProductWithCategory[] = await prisma.product.findMany({
       where: { isActive: true },
       include: { category: true },
     });
 
-    return products.map((p) => ({
+    return products.map((p: ProductWithCategory): ProductDomain => ({
       id: p.id,
       sku: p.sku,
       name: p.name,
@@ -66,7 +75,7 @@ export class MasterDataService {
    * Retrieves customer with tier information mapped to domain model.
    */
   async getCustomerWithTier(customerId: string): Promise<CustomerDomain | null> {
-    const customer = await prisma.customer.findUnique({
+    const customer: CustomerWithTier | null = await prisma.customer.findUnique({
       where: { id: customerId },
       include: { tier: true },
     });
@@ -95,7 +104,7 @@ export class MasterDataService {
    * Retrieves product with category information mapped to domain model.
    */
   async getProductWithCategory(productId: string): Promise<ProductDomain | null> {
-    const product = await prisma.product.findUnique({
+    const product: ProductWithCategory | null = await prisma.product.findUnique({
       where: { id: productId },
       include: { category: true },
     });
@@ -125,7 +134,7 @@ export class MasterDataService {
    * Batch retrieves products by IDs mapped to domain models.
    */
   async getProductsByIds(productIds: string[]): Promise<Map<string, ProductDomain>> {
-    const products = await prisma.product.findMany({
+    const products: ProductWithCategory[] = await prisma.product.findMany({
       where: { id: { in: productIds } },
       include: { category: true },
     });
@@ -156,8 +165,8 @@ export class MasterDataService {
    * Retrieves all discount policies mapped to domain models.
    */
   async getAllDiscountPolicies(): Promise<DiscountPolicyDomain[]> {
-    const policies = await prisma.discountPolicy.findMany();
-    return policies.map((p) => ({
+    const policies: DiscountPolicy[] = await prisma.discountPolicy.findMany();
+    return policies.map((p: DiscountPolicy): DiscountPolicyDomain => ({
       id: p.id,
       name: p.name,
       tierId: p.tierId,
@@ -172,8 +181,8 @@ export class MasterDataService {
    * Retrieves all approval rules mapped to domain models.
    */
   async getAllApprovalRules(): Promise<ApprovalRuleDomain[]> {
-    const rules = await prisma.approvalRule.findMany();
-    return rules.map((r) => ({
+    const rules: ApprovalRule[] = await prisma.approvalRule.findMany();
+    return rules.map((r: ApprovalRule): ApprovalRuleDomain => ({
       id: r.id,
       name: r.name,
       minRiskLevel: r.minRiskLevel as 'LOW' | 'MEDIUM' | 'HIGH',
@@ -186,8 +195,8 @@ export class MasterDataService {
    * Retrieves all cross-sell rules mapped to domain models.
    */
   async getCrossSellRules(): Promise<CrossSellRuleDomain[]> {
-    const rules = await prisma.crossSellRule.findMany();
-    return rules.map((r) => ({
+    const rules: CrossSellRule[] = await prisma.crossSellRule.findMany();
+    return rules.map((r: CrossSellRule): CrossSellRuleDomain => ({
       id: r.id,
       triggerProductId: r.triggerProductId,
       recommendedProductId: r.recommendedProductId,
