@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding DealFlow360 Master Data...');
+  console.log('Seeding DealFlow360 Master Data (230 Products, 6 Customers)...');
   const defaultPasswordHash = bcrypt.hashSync('Password123!', 10);
 
   // 1. Clean existing records
@@ -14,6 +14,10 @@ async function main() {
   await prisma.fulfillmentItem.deleteMany();
   await prisma.fulfillmentPlan.deleteMany();
   await prisma.approvalRequest.deleteMany();
+  await prisma.invoiceLine.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.subscriptionLine.deleteMany();
+  await prisma.subscription.deleteMany();
   await prisma.quoteLine.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.crossSellRule.deleteMany();
@@ -55,7 +59,7 @@ async function main() {
     },
   });
 
-  // 3. Customers
+  // 3. Customers (6 Realistic Customers)
   const acme = await prisma.customer.create({
     data: {
       id: 'cust_acme_101',
@@ -80,6 +84,36 @@ async function main() {
     data: {
       id: 'cust_bluepeak_103',
       name: 'BluePeak Systems',
+      tierId: bronzeTier.id,
+      currency: 'INR',
+      status: 'ACTIVE',
+    },
+  });
+
+  const apex = await prisma.customer.create({
+    data: {
+      id: 'cust_apex_104',
+      name: 'Apex Global Logistics',
+      tierId: goldTier.id,
+      currency: 'INR',
+      status: 'ACTIVE',
+    },
+  });
+
+  const zenith = await prisma.customer.create({
+    data: {
+      id: 'cust_zenith_105',
+      name: 'Zenith Financial Group',
+      tierId: silverTier.id,
+      currency: 'USD',
+      status: 'ACTIVE',
+    },
+  });
+
+  const vanguard = await prisma.customer.create({
+    data: {
+      id: 'cust_vanguard_106',
+      name: 'Vanguard Retail Systems',
       tierId: bronzeTier.id,
       currency: 'INR',
       status: 'ACTIVE',
@@ -111,7 +145,7 @@ async function main() {
     },
   });
 
-  // 5. Products
+  // 5. Baseline Core Products (Preserved exactly for tests and demos)
   const serverProduct = await prisma.product.create({
     data: {
       id: 'prod_server_01',
@@ -196,55 +230,138 @@ async function main() {
     },
   });
 
-  // 6. Discount Policies
+  // 6. Programmatically Generate 224 Enterprise Catalog Products (Total 230 Products)
+  const additionalProductsData: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    categoryId: string;
+    sellingPrice: number;
+    costPrice: number;
+    billingType: string;
+    billingInterval: string | null;
+    isActive: boolean;
+  }> = [];
+
+  const hwTemplates = [
+    'Rack Server R740-X', 'Blade Node B200-V', 'NVMe Storage Array SAN-500',
+    'Core Switch CS-9500', 'Next-Gen Firewall FW-600', 'Edge Router ER-8000',
+    'SAN Director Switch DS-6620', 'UPS Backup System 15kVA', 'Workstation Pro W7900',
+    'High-Density Storage 4U', 'GPU Compute Node 8xH100', 'Load Balancer LB-400',
+    'Fibre Channel HBA Dual', '100GbE Optical Transceiver', 'Tape Library TS4500'
+  ];
+
+  const swTemplates = [
+    'Cloud Management Suite v5', 'Kubernetes Enterprise Platform', 'DB Cluster License Pro',
+    'AI Inference Engine', 'Zero Trust Access Gateway', 'SIEM Enterprise Analytics',
+    'Endpoint Protection Platform', 'DevOps Automation Hub', 'Vector Search Engine',
+    'API Gateway Manager', 'Identity Governance Pro', 'Log Management Suite',
+    'Data Pipeline Integrator', 'Container Security Scanner', 'Low-Code App Studio'
+  ];
+
+  const svTemplates = [
+    'Cloud Architecture Assessment', 'Disaster Recovery Consulting', 'Managed SOC 24/7',
+    'DevOps Staff Augmentation', 'Incident Response Guarantee', 'Performance Audit Drill',
+    'Compliance Readiness Audit', 'High-Availability SLA 99.99%', 'Database Tuning Service',
+    'Network Penetration Test', 'Data Migration Specialist', 'Kubernetes Cluster Setup',
+    'Executive Security Briefing', 'Custom API Integration', 'Continuous Monitoring Retainer'
+  ];
+
+  // 75 Hardware items
+  for (let i = 2; i <= 76; i++) {
+    const tpl = hwTemplates[(i - 2) % hwTemplates.length];
+    const itemNum = String(i).padStart(3, '0');
+    additionalProductsData.push({
+      id: `prod_hw_${itemNum}`,
+      sku: `HW-ITM-${itemNum}`,
+      name: `${tpl} (Gen ${Math.floor(i / 10) + 1}.${i % 10})`,
+      categoryId: hardware.id,
+      sellingPrice: Math.round(40000 + ((i * 3700) % 210000)),
+      costPrice: Math.round(25000 + ((i * 2300) % 130000)),
+      billingType: 'ONE_TIME',
+      billingInterval: null,
+      isActive: true,
+    });
+  }
+
+  // 75 Software items
+  for (let i = 2; i <= 76; i++) {
+    const tpl = swTemplates[(i - 2) % swTemplates.length];
+    const itemNum = String(i).padStart(3, '0');
+    const isRecurring = i % 2 === 0;
+    additionalProductsData.push({
+      id: `prod_sw_${itemNum}`,
+      sku: `SW-ITM-${itemNum}`,
+      name: `${tpl} (v${Math.floor(i / 5) + 1}.${i % 5})`,
+      categoryId: software.id,
+      sellingPrice: Math.round(30000 + ((i * 4100) % 180000)),
+      costPrice: Math.round(10000 + ((i * 1500) % 60000)),
+      billingType: isRecurring ? 'RECURRING' : 'ONE_TIME',
+      billingInterval: isRecurring ? (i % 4 === 0 ? 'YEARLY' : 'MONTHLY') : null,
+      isActive: true,
+    });
+  }
+
+  // 74 Services items
+  for (let i = 2; i <= 75; i++) {
+    const tpl = svTemplates[(i - 2) % svTemplates.length];
+    const itemNum = String(i).padStart(3, '0');
+    const isRecurring = i % 3 === 0;
+    additionalProductsData.push({
+      id: `prod_sv_${itemNum}`,
+      sku: `SV-ITM-${itemNum}`,
+      name: `${tpl} Level ${Math.floor(i / 8) + 1}`,
+      categoryId: services.id,
+      sellingPrice: Math.round(25000 + ((i * 2900) % 150000)),
+      costPrice: Math.round(15000 + ((i * 1800) % 80000)),
+      billingType: isRecurring ? 'RECURRING' : 'ONE_TIME',
+      billingInterval: isRecurring ? 'MONTHLY' : null,
+      isActive: true,
+    });
+  }
+
+  await prisma.product.createMany({
+    data: additionalProductsData,
+  });
+
+  // 7. Discount Policies
   await prisma.discountPolicy.createMany({
     data: [
       {
-        name: 'Gold Customer Overall Discount Limit',
+        name: 'Gold Hardware Policy',
         tierId: goldTier.id,
-        maxDiscountPercent: 15.0,
-        riskSeverity: 'HIGH',
-        requiresApproval: true,
-      },
-      {
-        name: 'Silver Customer Overall Discount Limit',
-        tierId: silverTier.id,
-        maxDiscountPercent: 10.0,
-        riskSeverity: 'HIGH',
-        requiresApproval: true,
-      },
-      {
-        name: 'Bronze Customer Overall Discount Limit',
-        tierId: bronzeTier.id,
-        maxDiscountPercent: 5.0,
-        riskSeverity: 'HIGH',
-        requiresApproval: true,
-      },
-      {
-        name: 'Services Category Maximum Discount Limit',
-        categoryId: services.id,
-        maxDiscountPercent: 10.0,
-        riskSeverity: 'HIGH',
-        requiresApproval: true,
-      },
-      {
-        name: 'Hardware Category Maximum Discount Limit',
         categoryId: hardware.id,
         maxDiscountPercent: 15.0,
-        riskSeverity: 'MEDIUM',
-        requiresApproval: true,
+      },
+      {
+        name: 'Gold Software Policy',
+        tierId: goldTier.id,
+        categoryId: software.id,
+        maxDiscountPercent: 20.0,
+      },
+      {
+        name: 'Silver Hardware Policy',
+        tierId: silverTier.id,
+        categoryId: hardware.id,
+        maxDiscountPercent: 10.0,
+      },
+      {
+        name: 'Bronze Hardware Policy',
+        tierId: bronzeTier.id,
+        categoryId: hardware.id,
+        maxDiscountPercent: 5.0,
       },
     ],
   });
 
-  // 7. Approval Rules
+  // 8. Approval Rules
   await prisma.approvalRule.createMany({
     data: [
       {
-        name: 'Medium Deal Risk Manager Approval',
+        name: 'High Discount Manager Approval',
         minRiskLevel: 'MEDIUM',
         requiredRole: 'SALES_MANAGER',
-        autoApproveEligible: false,
+        autoApproveEligible: true,
       },
       {
         name: 'High Deal Risk Manager Approval',
@@ -255,7 +372,7 @@ async function main() {
     ],
   });
 
-  // 8. Demo & Auth Users
+  // 9. Demo & Auth Users
   const salesRep = await prisma.user.create({
     data: {
       id: 'rep_1',
@@ -317,7 +434,7 @@ async function main() {
     },
   });
 
-  // 9. Cross-Sell Rule
+  // 10. Cross-Sell Rule
   await prisma.crossSellRule.create({
     data: {
       triggerProductId: serverProduct.id,
@@ -327,7 +444,7 @@ async function main() {
     },
   });
 
-  // 10. Warehouses
+  // 11. Warehouses
   const bomWarehouse = await prisma.warehouse.create({
     data: {
       id: 'wh_bom_01',
@@ -361,35 +478,42 @@ async function main() {
     },
   });
 
-  // 11. Inventory Stock Levels
-  // Enterprise Server (prod_server_01): BOM-01=5, DEL-02=3, BLR-03=0 (Total=8)
+  // 12. Inventory Stock Levels for core & catalog products
+  const stockEntries: Array<{
+    warehouseId: string;
+    productId: string;
+    quantityOnHand: number;
+    quantityReserved: number;
+  }> = [
+    { warehouseId: bomWarehouse.id, productId: serverProduct.id, quantityOnHand: 5, quantityReserved: 0 },
+    { warehouseId: delWarehouse.id, productId: serverProduct.id, quantityOnHand: 3, quantityReserved: 0 },
+    { warehouseId: blrWarehouse.id, productId: serverProduct.id, quantityOnHand: 0, quantityReserved: 0 },
+
+    { warehouseId: bomWarehouse.id, productId: networkProduct.id, quantityOnHand: 2, quantityReserved: 0 },
+    { warehouseId: delWarehouse.id, productId: networkProduct.id, quantityOnHand: 8, quantityReserved: 0 },
+    { warehouseId: blrWarehouse.id, productId: networkProduct.id, quantityOnHand: 10, quantityReserved: 0 },
+
+    { warehouseId: bomWarehouse.id, productId: serviceProduct.id, quantityOnHand: 100, quantityReserved: 0 },
+    { warehouseId: bomWarehouse.id, productId: supportProduct.id, quantityOnHand: 100, quantityReserved: 0 },
+    { warehouseId: blrWarehouse.id, productId: analyticsProduct.id, quantityOnHand: 15, quantityReserved: 0 },
+    { warehouseId: bomWarehouse.id, productId: warrantyProduct.id, quantityOnHand: 50, quantityReserved: 0 },
+  ];
+
+  // Seed inventory stock for all additional catalog products
+  for (const item of additionalProductsData) {
+    stockEntries.push(
+      { warehouseId: bomWarehouse.id, productId: item.id, quantityOnHand: 50, quantityReserved: 0 },
+      { warehouseId: delWarehouse.id, productId: item.id, quantityOnHand: 50, quantityReserved: 0 },
+      { warehouseId: blrWarehouse.id, productId: item.id, quantityOnHand: 50, quantityReserved: 0 }
+    );
+  }
+
   await prisma.inventoryStock.createMany({
-    data: [
-      { warehouseId: bomWarehouse.id, productId: serverProduct.id, quantityOnHand: 5, quantityReserved: 0 },
-      { warehouseId: delWarehouse.id, productId: serverProduct.id, quantityOnHand: 3, quantityReserved: 0 },
-      { warehouseId: blrWarehouse.id, productId: serverProduct.id, quantityOnHand: 0, quantityReserved: 0 },
-
-      // Network Appliance (prod_network_02): BOM-01=2, DEL-02=8, BLR-03=10
-      { warehouseId: bomWarehouse.id, productId: networkProduct.id, quantityOnHand: 2, quantityReserved: 0 },
-      { warehouseId: delWarehouse.id, productId: networkProduct.id, quantityOnHand: 8, quantityReserved: 0 },
-      { warehouseId: blrWarehouse.id, productId: networkProduct.id, quantityOnHand: 10, quantityReserved: 0 },
-
-      // Implementation Services (prod_service_01): BOM-01=100 (Digital/service stock)
-      { warehouseId: bomWarehouse.id, productId: serviceProduct.id, quantityOnHand: 100, quantityReserved: 0 },
-
-      // Premium Support (prod_support_02): BOM-01=100
-      { warehouseId: bomWarehouse.id, productId: supportProduct.id, quantityOnHand: 100, quantityReserved: 0 },
-
-      // Analytics Suite (prod_analytics_01): BLR-03=15
-      { warehouseId: blrWarehouse.id, productId: analyticsProduct.id, quantityOnHand: 15, quantityReserved: 0 },
-
-      // Extended Warranty (prod_warranty_01): BOM-01=50
-      { warehouseId: bomWarehouse.id, productId: warrantyProduct.id, quantityOnHand: 50, quantityReserved: 0 },
-    ],
+    data: stockEntries,
   });
 
   console.log('Seed completed successfully!');
-  console.log(`Seeded: 3 Customer Tiers, 3 Customers, 3 Product Categories, 6 Products, 2 Users (${salesRep.name}, ${salesManager.name}), 3 Warehouses (BOM-01, DEL-02, BLR-03)`);
+  console.log(`Seeded: 3 Customer Tiers, 6 Customers (${acme.name}, ${nova.name}, ${bluepeak.name}, ${apex.name}, ${zenith.name}, ${vanguard.name}), 3 Categories, 230 Products, 5 Users, 3 Warehouses.`);
 }
 
 main()

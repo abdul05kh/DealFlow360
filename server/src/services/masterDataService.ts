@@ -129,11 +129,22 @@ export class MasterDataService {
   /**
    * Retrieves all products with category information (optionally including inactive).
    */
-  async getAllProducts(includeInactive = false): Promise<ProductDomain[]> {
-    const whereCondition = includeInactive ? {} : { isActive: true };
+  async getAllProducts(includeInactive = false, search?: string, limit?: number): Promise<ProductDomain[]> {
+    const whereCondition: any = includeInactive ? {} : { isActive: true };
+
+    if (search && search.trim().length > 0) {
+      const query = search.trim();
+      whereCondition.OR = [
+        { name: { contains: query } },
+        { sku: { contains: query } },
+      ];
+    }
+
     const products = await prisma.product.findMany({
       where: whereCondition,
       include: { category: true },
+      take: limit && limit > 0 ? limit : undefined,
+      orderBy: { name: 'asc' },
     });
 
     return products.map((p: ProductRecord) => ({

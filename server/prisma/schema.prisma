@@ -30,6 +30,9 @@ model Customer {
   negotiations  QuoteNegotiation[]
   invoices      Invoice[]
   subscriptions Subscription[]
+
+  @@index([name])
+  @@index([status])
 }
 
 model ProductCategory {
@@ -59,6 +62,11 @@ model Product {
   fulfillmentItems  FulfillmentItem[]
   invoiceLines      InvoiceLine[]
   subscriptionLines SubscriptionLine[]
+
+  @@index([name])
+  @@index([sku])
+  @@index([categoryId])
+  @@index([billingType])
 }
 
 model User {

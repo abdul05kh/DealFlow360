@@ -1,0 +1,48 @@
+name: DealFlow360 CI / CD Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Build, Test & Typecheck Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Project Dependencies
+        run: npm ci
+
+      - name: Database Migration & Master Data Seed
+        env:
+          DATABASE_URL: "file:./dev.db"
+          JWT_SECRET: "ci-secret-key-1234567890"
+        run: |
+          npx prisma db push --workspace=server
+          npm run db:seed
+
+      - name: Run Test Suite & Performance Smoke Tests
+        env:
+          DATABASE_URL: "file:./dev.db"
+          JWT_SECRET: "ci-secret-key-1234567890"
+        run: npm test --workspace=server
+
+      - name: Verify Server TypeScript Type Safety
+        run: npx tsc -p server/tsconfig.json --noEmit
+
+      - name: Verify Client TypeScript Type Safety
+        run: npx tsc -p client/tsconfig.json --noEmit
+
+      - name: Build Production Bundles
+        run: npm run build

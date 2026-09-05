@@ -209,8 +209,14 @@ export class APIClient {
     return this.handleResponse<CustomerDTO>(res);
   }
 
-  async getProducts(includeInactive = false): Promise<ProductDTO[]> {
-    const url = includeInactive ? `${API_BASE}/products?includeInactive=true` : `${API_BASE}/products`;
+  async getProducts(includeInactive = false, search?: string, limit?: number): Promise<ProductDTO[]> {
+    const params = new URLSearchParams();
+    if (includeInactive) params.append('includeInactive', 'true');
+    if (search && search.trim().length > 0) params.append('search', search.trim());
+    if (limit && limit > 0) params.append('limit', limit.toString());
+
+    const queryString = params.toString();
+    const url = `${API_BASE}/products${queryString ? `?${queryString}` : ''}`;
     const res = await fetch(url, {
       headers: this.getHeaders(),
     });

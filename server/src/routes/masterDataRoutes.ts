@@ -117,7 +117,9 @@ masterDataRouter.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const includeInactive = req.query.includeInactive === 'true' && req.user?.role === 'ADMIN';
-      const products = await masterDataService.getAllProducts(includeInactive);
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const products = await masterDataService.getAllProducts(includeInactive, search, limit);
       res.status(200).json(products);
     } catch (error: any) {
       res.status(500).json({

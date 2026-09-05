@@ -1,5 +1,5 @@
-import React from 'react';
-import { Package, Plus, Trash2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, Plus, Trash2, Search, ChevronDown, Check } from 'lucide-react';
 import { ProductDTO, QuoteItemInputDTO } from '../types/api';
 
 interface QuoteLineItemsProps {
@@ -19,12 +19,19 @@ export const QuoteLineItems: React.FC<QuoteLineItemsProps> = ({
   onRemoveLineItem,
   disabled = false,
 }) => {
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
+  const [searchTerms, setSearchTerms] = useState<Record<number, string>>({});
+
+  const handleSearchChange = (index: number, term: string) => {
+    setSearchTerms((prev) => ({ ...prev, [index]: term }));
+  };
+
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
           <Package className="w-4 h-4 text-blue-400" />
-          <span>Commercial Line Items</span>
+          <span>Commercial Line Items ({products.length} Products Available)</span>
         </div>
         <button
           type="button"
@@ -47,30 +54,100 @@ export const QuoteLineItems: React.FC<QuoteLineItemsProps> = ({
             const selectedProduct = products.find((p) => p.id === item.productId);
             const categoryCeiling = selectedProduct?.category.maxCategoryDiscount ?? 100;
             const isCategoryViolation = item.discountPercent > categoryCeiling;
+            const searchTerm = (searchTerms[index] || '').toLowerCase().trim();
+
+            const filteredProducts = products.filter(
+              (p) =>
+                !searchTerm ||
+                p.name.toLowerCase().includes(searchTerm) ||
+                p.sku.toLowerCase().includes(searchTerm)
+            );
+
+            const isDropdownOpen = openDropdownIndex === index;
 
             return (
               <div
                 key={index}
-                className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 space-y-3"
+                className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 space-y-3 relative"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  {/* Product selector */}
-                  <div className="flex-1 min-w-[200px]">
+                  {/* Searchable Product Selector */}
+                  <div className="flex-1 min-w-[240px] relative">
                     <label className="block text-[11px] font-medium text-slate-400 mb-1">
                       Product #{index + 1}:
                     </label>
-                    <select
-                      value={item.productId}
-                      onChange={(e) => onUpdateLineItem(index, { productId: e.target.value })}
+
+                    <button
+                      type="button"
                       disabled={disabled}
-                      className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      onClick={() => setOpenDropdownIndex(isDropdownOpen ? null : index)}
+                      className="w-full bg-slate-950 border border-slate-700 text-white rounded-md px-3 py-1.5 text-xs flex items-center justify-between focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     >
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.sku}) — ₹{p.sellingPrice.toLocaleString('en-IN')} [{p.category.code}]
-                        </option>
-                      ))}
-                    </select>
+                      <span className="truncate">
+                        {selectedProduct
+                          ? `${selectedProduct.name} (${selectedProduct.sku}) — ₹${selectedProduct.sellingPrice.toLocaleString('en-IN')}`
+                          : 'Select a product...'}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+                    </button>
+
+                    {/* Bounded Search & Result List Dropdown (Visible Height ~5 items max, scrollable) */}
+                    {isDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-slate-950 border border-slate-700 rounded-lg shadow-2xl z-50 p-2 space-y-2">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                          <input
+                            type="text"
+                            placeholder="Search catalog by name or SKU..."
+                            value={searchTerms[index] || ''}
+                            onChange={(e) => handleSearchChange(index, e.target.value)}
+                            autoFocus
+                            className="w-full bg-slate-900 border border-slate-700 text-white rounded-md pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        {/* Visible rows max 5 (~180px height limit with overflow-y-auto) */}
+                        <div className="max-h-44 overflow-y-auto space-y-1 divide-y divide-slate-800/50 pr-1">
+                          {filteredProducts.length === 0 ? (
+                            <div className="py-4 text-center text-xs text-slate-500">
+                              No products found
+                            </div>
+                          ) : (
+                            filteredProducts.map((p) => {
+                              const isSelected = p.id === item.productId;
+                              return (
+                                <button
+                                  type="button"
+                                  key={p.id}
+                                  onClick={() => {
+                                    onUpdateLineItem(index, { productId: p.id });
+                                    setOpenDropdownIndex(null);
+                                  }}
+                                  className={`w-full text-left p-2 rounded text-xs flex items-center justify-between transition-colors ${
+                                    isSelected
+                                      ? 'bg-blue-600/20 text-blue-300 font-semibold'
+                                      : 'hover:bg-slate-900 text-slate-200'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="font-medium text-slate-100">{p.name}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">
+                                      {p.sku} | {p.category.code} | {p.billingType}
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0 ml-2">
+                                    <div className="font-mono text-emerald-400 font-bold">
+                                      ₹{p.sellingPrice.toLocaleString('en-IN')}
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-400 ml-auto mt-0.5" />}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Quantity */}
@@ -129,40 +206,23 @@ export const QuoteLineItems: React.FC<QuoteLineItemsProps> = ({
                     <button
                       type="button"
                       onClick={() => onRemoveLineItem(index)}
-                      disabled={disabled || lineItems.length <= 1}
+                      disabled={disabled}
+                      className="p-2 text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50"
                       title="Remove line item"
-                      className="p-1.5 text-slate-400 hover:text-red-400 rounded-md hover:bg-slate-800 disabled:opacity-30 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Range Slider for Quick Adjustment */}
-                <div className="flex items-center gap-3 pt-1">
-                  <input
-                    type="range"
-                    min={0}
-                    max={50}
-                    step={1}
-                    value={item.discountPercent}
-                    onChange={(e) =>
-                      onUpdateLineItem(index, {
-                        discountPercent: parseFloat(e.target.value),
-                      })
-                    }
-                    disabled={disabled}
-                    className="flex-1 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                </div>
-
-                {/* Category Ceiling Warning */}
+                {/* Category discount violation warning pill */}
                 {isCategoryViolation && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-medium bg-amber-500/10 p-2 rounded border border-amber-500/20">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded px-2.5 py-1 flex items-center justify-between text-[11px] text-amber-300">
                     <span>
-                      Exceeds {selectedProduct?.category.name} ceiling of {categoryCeiling}%. Evaluator will trigger risk penalty.
+                      Exceeds {selectedProduct?.category.name} category ceiling (
+                      {categoryCeiling}%)
                     </span>
+                    <span className="font-semibold text-amber-400">Requires Approval</span>
                   </div>
                 )}
               </div>
