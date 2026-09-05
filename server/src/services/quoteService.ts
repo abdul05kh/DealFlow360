@@ -9,10 +9,12 @@ import {
   ApprovalDecision,
   DiscountGovernanceResult,
   FinancialSummary,
+  MarginRealizationResult,
   NotFoundError,
   RecommendationResult,
   RiskEvaluationResult,
 } from '../domain/types';
+import { marginRealizationEngine } from '../domain/margin/marginRealizationEngine';
 
 import { CreateQuoteInputDTO, EvaluateQuoteInputDTO } from '../schemas/quoteSchema';
 import { masterDataService } from './masterDataService';
@@ -24,6 +26,7 @@ export interface FullQuoteEvaluationResult {
     tier: string;
   };
   financials: FinancialSummary;
+  marginRealization: MarginRealizationResult;
   governance: DiscountGovernanceResult;
   risk: RiskEvaluationResult;
   decision: ApprovalDecision;
@@ -55,6 +58,10 @@ export class QuoteService {
     // 3. Calculate Financial Summary
     const financials = marginCalculator.calculateQuote(input.items, productMap);
 
+    // 3.5 Calculate Server-Authoritative Margin Realization Index (MRI)
+    const totalQuantity = input.items.reduce((sum, item) => sum + item.quantity, 0);
+    const marginRealization = marginRealizationEngine.calculateMRI(financials, totalQuantity, customer.tier);
+
     // 4. Evaluate Discount Governance
     const policies = await masterDataService.getAllDiscountPolicies();
     const governance = discountGovernance.evaluate(financials, customer, productMap, policies);
@@ -82,6 +89,7 @@ export class QuoteService {
         tier: customer.tier.name,
       },
       financials,
+      marginRealization,
       governance,
       risk,
       decision,
