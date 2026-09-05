@@ -155,8 +155,8 @@ Enforces server-side Role-Based Access Control (RBAC), tenant isolation, strict 
 
 ```mermaid
 graph TD
-    Client[React 19 + TypeScript Client] -->|REST API / JWT| Server[Express 4 Node.js Server]
-    Server --> Auth[Firebase Auth Middleware]
+    Client[React 19 + TypeScript Client] -->|REST API / JWT Auth| Server[Express 4 Node.js Server]
+    Server --> Auth[Firebase Auth & Middleware]
     Server --> Gov[Discount Governance Engine]
     Server --> Risk[Risk & MRI Engine]
     Server --> Fulfill[Fulfillment Engine]
@@ -165,20 +165,20 @@ graph TD
     Risk --> Prisma
     Fulfill --> Prisma
     Bill --> Prisma
-    Prisma --> DB[(SQLite Database)]
+    Prisma --> DB[(SQLite Database / dev.db)]
 ```
 
 ### Technology Stack
 
-| Layer | Technology | Description |
+| Layer | Technology | Purpose & Implementation Details |
 | :--- | :--- | :--- |
-| **Frontend** | React 19, TypeScript 5.7, Vite 7.3 | Modern SPA with Vanilla CSS design system, Lucide icons, and SheetJS export |
-| **Backend** | Node.js 20, Express 4.21, Zod | Type-safe REST API with strict runtime payload validation |
-| **Authentication** | Firebase Admin SDK, JWT | Role-based route protection and customer tenant isolation |
-| **Database & ORM** | SQLite 3, Prisma 6.3 | Relational database schema with transactional locks |
-| **Testing & Quality** | Vitest 3.2, Supertest | Unit, integration, concurrency, and performance smoke testing |
-| **CI/CD** | GitHub Actions | Automated build, typecheck, seed, and test workflow |
-| **Exports** | SheetJS (`xlsx`) | Genuine binary `.xlsx` spreadsheet workbook generation |
+| **Frontend UI** | React 19, TypeScript 5.7, Vite 7.3 | Single-page application with custom Vanilla CSS tokens, Lucide icons, and state management. |
+| **Backend API** | Node.js 20, Express 4.21, Zod | Type-safe REST endpoints with strict runtime Zod payload validation and domain engines. |
+| **Authentication** | Firebase Admin SDK, JWT | Server-verified auth tokens, role-based route guards, and customer tenant isolation. |
+| **Database & ORM** | SQLite 3, Prisma 6.3 | Relational schema with foreign keys, indexes, transaction blocks, and stock reservation locks. |
+| **Testing Framework** | Vitest 3.2, Supertest | Comprehensive unit, API integration, concurrency, and performance smoke test suite. |
+| **CI / CD Pipeline** | GitHub Actions | Automated lint, build, server/client typecheck, master data seed, and test workflow. |
+| **Document Export** | SheetJS (`xlsx`), Window Print | Client-side genuine binary `.xlsx` spreadsheet workbook streaming and styled printable PDF views. |
 
 ---
 
