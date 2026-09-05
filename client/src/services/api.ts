@@ -4,8 +4,12 @@ import {
   DemoRole,
   EvaluateQuotePayloadDTO,
   FullQuoteEvaluationDTO,
+  FulfillmentEvaluationResponseDTO,
+  FulfillmentPlanDTO,
+  ManualOverrideItemDTO,
   ProductDTO,
   SavedQuoteDTO,
+  WarehouseDTO,
 } from '../types/api';
 
 const API_BASE = '/api/v1';
@@ -16,7 +20,13 @@ export class APIClient {
 
   setIdentity(role: DemoRole, userId?: string) {
     this.role = role;
-    this.userId = userId || (role === 'SALES_MANAGER' ? 'mgr_1' : 'rep_1');
+    this.userId =
+      userId ||
+      (role === 'OPERATIONS_MANAGER'
+        ? 'ops_1'
+        : role === 'SALES_MANAGER'
+        ? 'mgr_1'
+        : 'rep_1');
   }
 
   getIdentity(): { role: DemoRole; userId: string } {
@@ -106,6 +116,52 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<SavedQuoteDTO>(res);
+  }
+
+  /** Flow B Fulfillment Endpoints */
+
+  async getWarehouses(): Promise<WarehouseDTO[]> {
+    const res = await fetch(`${API_BASE}/warehouses`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<WarehouseDTO[]>(res);
+  }
+
+  async evaluateFulfillment(
+    quoteId: string,
+    signal?: AbortSignal
+  ): Promise<FulfillmentEvaluationResponseDTO> {
+    const res = await fetch(`${API_BASE}/fulfillment/evaluate`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ quoteId }),
+      signal,
+    });
+    return this.handleResponse<FulfillmentEvaluationResponseDTO>(res);
+  }
+
+  async allocateFulfillment(
+    quoteId: string,
+    manualOverrides?: ManualOverrideItemDTO[]
+  ): Promise<FulfillmentPlanDTO> {
+    const payload: { quoteId: string; manualOverrides?: ManualOverrideItemDTO[] } = { quoteId };
+    if (manualOverrides && manualOverrides.length > 0) {
+      payload.manualOverrides = manualOverrides;
+    }
+
+    const res = await fetch(`${API_BASE}/fulfillment/allocate`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<FulfillmentPlanDTO>(res);
+  }
+
+  async getFulfillmentByQuoteId(quoteId: string): Promise<FulfillmentPlanDTO> {
+    const res = await fetch(`${API_BASE}/fulfillment/quote/${encodeURIComponent(quoteId)}`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<FulfillmentPlanDTO>(res);
   }
 }
 

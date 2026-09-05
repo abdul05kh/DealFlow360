@@ -3,7 +3,7 @@
  * Matches server domain types and API response payloads.
  */
 
-export type DemoRole = 'SALES_REP' | 'SALES_MANAGER';
+export type DemoRole = 'SALES_REP' | 'SALES_MANAGER' | 'OPERATIONS_MANAGER';
 
 export interface CustomerTierDTO {
   id: string;
@@ -217,4 +217,73 @@ export interface SavedQuoteDTO {
 export interface APIErrorResponse {
   error: string;
   message: string;
+}
+
+/** Flow B Fulfillment Domain DTO Types */
+
+export interface InventoryStockDTO {
+  id: string;
+  warehouseId: string;
+  productId: string;
+  quantityOnHand: number;
+  quantityReserved: number;
+  product?: ProductDTO;
+}
+
+export interface WarehouseDTO {
+  id: string;
+  code: string;
+  name: string;
+  location: string;
+  baseShippingCost: number;
+  priority: number;
+  stocks: InventoryStockDTO[];
+}
+
+export interface FulfillmentItemDTO {
+  id?: string;
+  quoteLineId: string;
+  productId: string;
+  warehouseId?: string | null;
+  warehouseCode?: string | null;
+  warehouse?: WarehouseDTO | null;
+  product?: ProductDTO | null;
+  allocatedQuantity: number;
+  status: 'FULFILLED' | 'BACKORDERED';
+  shippingCost: number;
+}
+
+export interface FulfillmentEvaluationResultDTO {
+  items: FulfillmentItemDTO[];
+  totalShipments: number;
+  totalFulfillmentCost: number;
+  backorderCount: number;
+  status: 'ALLOCATED' | 'PARTIALLY_FULFILLED_BACKORDER';
+}
+
+export interface FulfillmentEvaluationResponseDTO {
+  quoteId: string;
+  quoteNumber: string;
+  customerName: string;
+  evaluation: FulfillmentEvaluationResultDTO;
+}
+
+export type FulfillmentPlanStatus = 'ALLOCATED' | 'PARTIALLY_FULFILLED_BACKORDER' | 'OVERRIDDEN';
+
+export interface FulfillmentPlanDTO {
+  id: string;
+  quoteId: string;
+  quote?: SavedQuoteDTO;
+  status: FulfillmentPlanStatus;
+  totalShipments: number;
+  totalFulfillmentCost: number;
+  backorderCount: number;
+  createdAt: string;
+  items: FulfillmentItemDTO[];
+  auditHistory?: AuditEventDTO[];
+}
+
+export interface ManualOverrideItemDTO {
+  quoteLineId: string;
+  warehouseId: string;
 }
