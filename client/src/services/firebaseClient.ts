@@ -2,7 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyALR1c3gYqQPrYw16dG1l2Y5XNmZq5GLZ0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "dealflow360-98.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "dealflow360-98",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "dealflow360-98.firebasestorage.app",
