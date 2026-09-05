@@ -65,16 +65,20 @@ In modern B2B enterprise sales, revenue leakage occurs silently across fragmente
 
 ## The Solution
 
-| Control Layer | Purpose & Server-Side Mechanism |
-| :--- | :--- |
-| 🛡️ **Discount Governance** | Enforces tier-based and category-based discount ceilings before quote submission. |
-| 📊 **Margin & Risk** | Computes Margin Realization Index (MRI) and multi-factor commercial risk score. |
-| 🔐 **Approval State Machine** | Dynamically locks policy-violating quotes until appropriate manager role approves. |
-| 🤝 **Negotiation Portal** | Evaluates customer counter-offers server-side without exposing internal cost or margin metrics. |
-| 📦 **Fulfillment Engine** | Checks multi-warehouse inventory, logs backorders, and acquires concurrency locks. |
-| 💳 **Hybrid Billing** | Separates one-time invoices (`ISSUED` $\rightarrow$ `PAID`) from recurring subscriptions (`MONTHLY`, `QUARTERLY`, `YEARLY`). |
-| 🧾 **Credit & Cancellation** | Manages internal subscription cancellation (`ACTIVE` $\rightarrow$ `CANCELLED`) and capped credit notes. |
-| 📋 **Audit Engine** | Generates an immutable event log for every approval, counter-offer, payment, and credit note. |
+DealFlow360 transforms ungoverned sales activity into **governed commercial execution**.
+
+Every deal evaluated by DealFlow360 passes through an automated, server-enforced governance pipeline:
+
+| Control Layer | Core Governance Module | Server-Side Enforcement Mechanism |
+| :--- | :--- | :--- |
+| 🛡️ **Discount Governance** | Multi-Tier Policy Engine | Validates line-item and overall discounts against tier ceilings (`BRONZE` $\rightarrow$ `ENTERPRISE`) and category rules. |
+| 📊 **Margin & Risk** | Margin Realization Index (MRI) | Computes realized margin vs. required volume target and generates a weighted Risk Score (`LOW` $\rightarrow$ `CRITICAL`). |
+| 🔐 **Approval Routing** | Managerial State Machine | Locks policy-violating quotes in `PENDING_APPROVAL` status until an authorized role (`SALES_MANAGER`) approves. |
+| 🤝 **Customer Negotiation** | Isolated Customer Portal | Evaluates price counter-offers server-side and routes policy-exceeding counter-offers back for manager review. |
+| 📦 **Fulfillment Engine** | Inventory Allocation | Verifies stock availability across warehouses, tracks backorders, and acquires database transaction locks. |
+| 💳 **Hybrid Billing** | Integer Run-Rate Engine | Separates one-time charges (`ISSUED` $\rightarrow$ `PAID`) from recurring subscriptions (`MONTHLY`, `QUARTERLY`, `YEARLY`). |
+| 🧾 **Credit & Cancellation** | Financial Lifecycle Engine | Enforces `ACTIVE` $\rightarrow$ `CANCELLED` subscription transitions and issues transactional credit notes capped to invoice balances. |
+| 📋 **Audit Engine** | Immutable Audit Trail | Generates persistent `AuditEvent` records with timestamp, actor ID, and exact state delta for every critical action. |
 
 ---
 
