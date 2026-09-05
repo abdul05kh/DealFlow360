@@ -59,6 +59,21 @@ interface ApprovalRuleRecord {
   autoApproveEligible: boolean;
 }
 
+interface CustomerTierRecord {
+  id: string;
+  code: string;
+  name: string;
+  maxOverallDiscount: number;
+  minMarginThreshold: number;
+}
+
+interface ProductCategoryRecord {
+  id: string;
+  code: string;
+  name: string;
+  maxCategoryDiscount: number;
+}
+
 interface CrossSellRuleRecord {
   id: string;
   triggerProductId: string;
@@ -379,7 +394,7 @@ export class MasterDataService {
 
   async getAllCustomerTiers(): Promise<CustomerTierDomain[]> {
     const tiers = await prisma.customerTier.findMany();
-    return tiers.map((t) => ({
+    return tiers.map((t: CustomerTierRecord) => ({
       id: t.id,
       code: t.code,
       name: t.name,
@@ -512,7 +527,7 @@ export class MasterDataService {
 
   async getAllProductCategories(): Promise<ProductCategoryDomain[]> {
     const categories = await prisma.productCategory.findMany();
-    return categories.map((c) => ({
+    return categories.map((c: ProductCategoryRecord) => ({
       id: c.id,
       code: c.code,
       name: c.name,
