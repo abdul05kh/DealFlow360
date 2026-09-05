@@ -462,12 +462,12 @@ describe('Flow A REST API & Anti-Tampering Integration Tests', () => {
   });
 
   // 22. Anti-Tampering: Rejects write methods on master data endpoints
-  it('22. Anti-Tampering: rejects POST write attempt on /api/v1/customers (404 Not Found)', async () => {
+  it('22. Anti-Tampering: rejects POST write attempt by non-admin on /api/v1/customers (403 Forbidden)', async () => {
     const res = await request
       .post('/api/v1/customers')
       .set('X-Demo-Role', 'SALES_REP')
       .send({ name: 'Fake Malicious Customer' });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
   });
 });
