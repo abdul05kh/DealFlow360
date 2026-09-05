@@ -9,7 +9,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('rep@dealflow360.com');
+  const [email, setEmail] = useState('salesmanager@example.com');
   const [password, setPassword] = useState('Password123!');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +19,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Attempt Firebase client sign in if active
-      let firebaseToken: string | undefined = undefined;
+      let authRes: any = null;
       try {
         const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-        firebaseToken = await userCred.user.getIdToken();
+        const idToken = await userCred.user.getIdToken();
+        authRes = await apiClient.loginWithFirebaseToken(idToken);
       } catch (fbErr: any) {
-        // Fallback to server authentication if Firebase Client fails or user is not yet created in Firebase Console
         console.warn('Firebase Client Sign-In fallback:', fbErr.message);
+        authRes = await apiClient.login({ email, password });
       }
 
-      const res = await apiClient.login({ email, password });
-      onLoginSuccess(res.user);
+      onLoginSuccess(authRes.user);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check credentials.');
     } finally {
@@ -43,8 +42,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setError(null);
     setEmail(demoEmail);
     try {
-      const res = await apiClient.login({ email: demoEmail, password: 'Password123!' });
-      onLoginSuccess(res.user);
+      let authRes: any = null;
+      try {
+        const userCred = await signInWithEmailAndPassword(firebaseAuth, demoEmail, 'Password123!');
+        const idToken = await userCred.user.getIdToken();
+        authRes = await apiClient.loginWithFirebaseToken(idToken);
+      } catch (fbErr: any) {
+        console.warn('Firebase Client Sign-In fallback:', fbErr.message);
+        authRes = await apiClient.login({ email: demoEmail, password: 'Password123!' });
+      }
+      onLoginSuccess(authRes.user);
     } catch (err: any) {
       setError(err.message || 'Quick login failed.');
     } finally {
@@ -147,7 +154,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => handleQuickLogin('rep@dealflow360.com')}
+                onClick={() => handleQuickLogin('salesrep@example.com')}
                 className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2"
               >
                 <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
@@ -159,7 +166,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('manager@dealflow360.com')}
+                onClick={() => handleQuickLogin('salesmanager@example.com')}
                 className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2"
               >
                 <UserCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
@@ -171,7 +178,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin@dealflow360.com')}
+                onClick={() => handleQuickLogin('operations@example.com')}
+                className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <div>
+                  <div className="font-bold text-[11px]">Operations Lead</div>
+                  <div className="text-[10px] text-slate-400">Operator Portal</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('admin@example.com')}
                 className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2"
               >
                 <UserCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -183,12 +202,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('customer@acme.com')}
-                className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2"
+                onClick={() => handleQuickLogin('customer@example.com')}
+                className="p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all text-slate-200 flex items-center gap-2 col-span-2"
               >
                 <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <div>
-                  <div className="font-bold text-[11px]">Acme Customer</div>
+                  <div className="font-bold text-[11px]">Acme Customer (Acme)</div>
                   <div className="text-[10px] text-slate-400">Customer Portal</div>
                 </div>
               </button>

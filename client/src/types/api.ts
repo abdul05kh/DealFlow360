@@ -481,24 +481,39 @@ export interface OperatorCustomerRequestDTO {
   id: string;
   quoteId: string;
   quoteNumber: string;
+  quoteStatus: string;
   customerId: string;
   customerName: string;
+  salesRepId?: string;
+  salesRepName?: string;
   round: number;
   status: string;
   customerNote?: string | null;
+  managerReason?: string | null;
+  customerResponseNote?: string | null;
   createdAt: string;
-  submittedByUserId?: string | null;
-  quoteStatus: string;
-  riskLevel: string;
-  riskScore: number;
-  totalOfferedGross: number;
-  totalRequestedDiscount: number;
+  updatedAt: string;
+  financials?: {
+    grossRevenue: number;
+    discountAmount: number;
+    netRevenue: number;
+    riskLevel: string;
+    riskScore: number;
+  };
+  totalOfferedGross?: number;
+  totalRequestedDiscount?: number;
+  riskLevel?: string;
+  riskScore?: number;
   lines: Array<{
+    id?: string;
     quoteLineId: string;
+    productId?: string;
     productName: string;
     sku: string;
-    offeredDiscountPercent: number;
-    requestedDiscountPercent: number;
+    originalDiscountPercent?: number;
+    offeredDiscountPercent?: number;
+    requestedDiscountPercent?: number;
+    unitPrice?: number;
     customerNote?: string | null;
   }>;
 }

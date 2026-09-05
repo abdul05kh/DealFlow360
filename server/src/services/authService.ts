@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index';
+import { verifyFirebaseToken } from '../config/firebaseAdmin';
 import { LoginInput, SignupInput } from '../schemas/authSchema';
 
 const prisma = new PrismaClient();
@@ -169,4 +170,61 @@ export const getUserById = async (userId: string): Promise<SafeUser> => {
     role: user.role,
     customerId: user.customerId,
   };
+};
+
+export const authenticateFirebaseUser = async (idToken: string): Promise<AuthResponse> => {
+  const decoded = await verifyFirebaseToken(idToken);
+  if (!decoded || !decoded.uid) {
+    const error: any = new Error('Invalid or expired Firebase token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 1. First attempt lookup by firebaseUid
+  let user = await prisma.user.findUnique({
+    where: { firebaseUid: decoded.uid },
+  });
+
+  // 2. If not found by firebaseUid, perform safe one-time link by verified token email
+  if (!user && decoded.email) {
+    const normalizedEmail = decoded.email.trim().toLowerCase();
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingByEmail) {
+      user = await prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: { firebaseUid: decoded.uid },
+      });
+    }
+  }
+
+  if (!user) {
+    const error: any = new Error('Firebase account not linked to an active DealFlow360 user.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (user.isActive === false) {
+    const error: any = new Error('Account is deactivated. Contact System Administrator.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const safeUser: SafeUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    customerId: user.customerId,
+  };
+
+  const token = generateToken({
+    userId: user.id,
+    role: user.role,
+    customerId: user.customerId,
+  });
+
+  return { user: safeUser, token };
 };

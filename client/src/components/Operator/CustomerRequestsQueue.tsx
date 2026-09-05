@@ -75,6 +75,22 @@ export const CustomerRequestsQueue: React.FC<CustomerRequestsQueueProps> = ({ cu
     }
   };
 
+  const formatCurrency = (val?: number | null): string => {
+    if (val === undefined || val === null || isNaN(Number(val))) return '₹0';
+    return `₹${Number(val).toLocaleString()}`;
+  };
+
+  const formatDate = (val?: string | Date | null): string => {
+    if (!val) return '—';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleString();
+    } catch {
+      return '—';
+    }
+  };
+
   const isManagerOrAdmin = currentRole === 'SALES_MANAGER' || currentRole === 'ADMIN';
 
   return (
@@ -145,91 +161,101 @@ export const CustomerRequestsQueue: React.FC<CustomerRequestsQueueProps> = ({ cu
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {requests.map((req) => (
-            <div
-              key={req.id}
-              className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 shadow-lg space-y-4 transition-all"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-                <div className="space-y-1">
+          {requests.map((req) => {
+            const riskLevel = req.financials?.riskLevel ?? req.riskLevel ?? 'LOW';
+            const riskScore = req.financials?.riskScore ?? req.riskScore ?? 0;
+            const grossRevenue = req.financials?.grossRevenue ?? req.totalOfferedGross ?? 0;
+
+            return (
+              <div
+                key={req.id}
+                className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 shadow-lg space-y-4 transition-all"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-extrabold text-white">Quote #{req.quoteNumber}</span>
+                      <span className="bg-blue-950 text-blue-300 text-xs font-mono font-bold px-2.5 py-0.5 rounded border border-blue-800/60">
+                        Round {req.round} Counter-Offer
+                      </span>
+                      <span
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded ${
+                          riskLevel === 'HIGH'
+                            ? 'bg-red-950 text-red-400 border border-red-800'
+                            : riskLevel === 'MEDIUM'
+                            ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                            : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                        }`}
+                      >
+                        Risk: {riskLevel} (Score: {riskScore})
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                      <span>Company: <strong className="text-slate-200">{req.customerName}</strong></span>
+                      <span>•</span>
+                      <span>Submitted: {formatDate(req.createdAt)}</span>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3">
-                    <span className="text-base font-extrabold text-white">Quote #{req.quoteNumber}</span>
-                    <span className="bg-blue-950 text-blue-300 text-xs font-mono font-bold px-2.5 py-0.5 rounded border border-blue-800/60">
-                      Round {req.round} Counter-Offer
-                    </span>
-                    <span
-                      className={`text-xs font-bold px-2.5 py-0.5 rounded ${
-                        req.riskLevel === 'HIGH'
-                          ? 'bg-red-950 text-red-400 border border-red-800'
-                          : req.riskLevel === 'MEDIUM'
-                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                          : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      }`}
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">Total Offered Gross</div>
+                      <div className="text-sm font-mono font-bold text-white">{formatCurrency(grossRevenue)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReq(req)}
+                      className="py-2 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
                     >
-                      Risk: {req.riskLevel} (Score: {req.riskScore})
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 flex items-center gap-2">
-                    <span>Company: <strong className="text-slate-200">{req.customerName}</strong></span>
-                    <span>•</span>
-                    <span>Submitted: {new Date(req.createdAt).toLocaleString()}</span>
+                      <span>Review Counter-Offer</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400">Total Offerd Gross</div>
-                    <div className="text-sm font-mono font-bold text-white">₹{req.totalOfferedGross.toLocaleString()}</div>
+                {/* Customer Note */}
+                {req.customerNote && (
+                  <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1">
+                    <div className="font-semibold text-blue-300 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Customer Note:
+                    </div>
+                    <p className="text-slate-300 italic">{req.customerNote}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedReq(req)}
-                    className="py-2 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <span>Review Counter-Offer</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                )}
 
-              {/* Customer Note */}
-              {req.customerNote && (
-                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1">
-                  <div className="font-semibold text-blue-300 flex items-center gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Customer Note:
-                  </div>
-                  <p className="text-slate-300 italic">{req.customerNote}</p>
-                </div>
-              )}
-
-              {/* Requested Line Item Details */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 font-semibold">
-                      <th className="py-2 px-3">Product</th>
-                      <th className="py-2 px-3">SKU</th>
-                      <th className="py-2 px-3">Original Offered Disc %</th>
-                      <th className="py-2 px-3">Requested Counter Disc %</th>
-                      <th className="py-2 px-3">Line Customer Note</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {req.lines.map((l, idx) => (
-                      <tr key={idx} className="hover:bg-slate-900/40">
-                        <td className="py-2 px-3 font-semibold text-white">{l.productName}</td>
-                        <td className="py-2 px-3 font-mono text-slate-400">{l.sku}</td>
-                        <td className="py-2 px-3 font-mono text-slate-300">{l.offeredDiscountPercent}%</td>
-                        <td className="py-2 px-3 font-mono font-bold text-amber-400">{l.requestedDiscountPercent}%</td>
-                        <td className="py-2 px-3 text-slate-400 italic">{l.customerNote || '—'}</td>
+                {/* Requested Line Item Details */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 font-semibold">
+                        <th className="py-2 px-3">Product</th>
+                        <th className="py-2 px-3">SKU</th>
+                        <th className="py-2 px-3">Original Offered Disc %</th>
+                        <th className="py-2 px-3">Requested Counter Disc %</th>
+                        <th className="py-2 px-3">Line Customer Note</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {(req.lines || []).map((l, idx) => {
+                        const origDisc = l.originalDiscountPercent ?? l.offeredDiscountPercent ?? 0;
+                        const reqDisc = l.requestedDiscountPercent ?? 0;
+                        return (
+                          <tr key={idx} className="hover:bg-slate-900/40">
+                            <td className="py-2 px-3 font-semibold text-white">{l.productName}</td>
+                            <td className="py-2 px-3 font-mono text-slate-400">{l.sku}</td>
+                            <td className="py-2 px-3 font-mono text-slate-300">{origDisc}%</td>
+                            <td className="py-2 px-3 font-mono font-bold text-amber-400">{reqDisc}%</td>
+                            <td className="py-2 px-3 text-slate-400 italic">{l.customerNote || '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

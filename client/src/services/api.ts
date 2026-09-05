@@ -108,6 +108,19 @@ export class APIClient {
     return data;
   }
 
+  async loginWithFirebaseToken(idToken: string): Promise<AuthResponseDTO> {
+    const res = await fetch(`${API_BASE}/auth/firebase-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = await this.handleResponse<AuthResponseDTO>(res);
+    this.setToken(data.token);
+    this.currentUser = data.user;
+    this.setIdentity(data.user.role, data.user.id);
+    return data;
+  }
+
   async signup(payload: SignupPayloadDTO): Promise<AuthResponseDTO> {
     const res = await fetch(`${API_BASE}/auth/signup`, {
       method: 'POST',

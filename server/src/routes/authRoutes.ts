@@ -1,9 +1,31 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { loginSchema, signupSchema } from '../schemas/authSchema';
-import { getUserById, loginUser, signupUser } from '../services/authService';
+import { authenticateFirebaseUser, getUserById, loginUser, signupUser } from '../services/authService';
 
 export const authRouter = Router();
+
+// POST /api/v1/auth/firebase-login
+authRouter.post(
+  '/auth/firebase-login',
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        res.status(400).json({ error: 'ValidationError', message: 'Firebase idToken is required' });
+        return;
+      }
+      const result = await authenticateFirebaseUser(idToken);
+      res.status(200).json(result);
+    } catch (err: any) {
+      if (err.statusCode === 401) {
+        res.status(401).json({ error: 'Unauthorized', message: err.message || 'Firebase authentication failed' });
+        return;
+      }
+      next(err);
+    }
+  }
+);
 
 // POST /api/v1/auth/signup
 authRouter.post(
