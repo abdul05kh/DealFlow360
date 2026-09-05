@@ -5,9 +5,9 @@ import { prisma } from '../src/db/client.js';
 import { z } from 'zod';
 import { validatePayload } from '../src/middleware/validatePayload.js';
 import { authMiddleware } from '../src/middleware/authMiddleware.js';
-import type { Prisma, User } from '@prisma/client';
+import type { Customer, CustomerTier, User } from '@prisma/client';
 
-type CustomerWithTier = Prisma.CustomerGetPayload<{ include: { tier: true } }>;
+type CustomerWithTier = Customer & { tier: CustomerTier };
 
 // Setup test route for middleware testing
 const dummySchema = z.object({
