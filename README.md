@@ -1,6 +1,4 @@
-# 🚦 DealFlow360
-
-### Deal Governance Engine for Commercially Safe Sales Execution
+# 🚦 DealFlow360 — Commercial Sales Governance Engine
 
 > **Don't just manage deals. Govern whether they're commercially safe to move forward.**
 
@@ -34,7 +32,7 @@ DealFlow360 is a closed-loop commercial governance layer that connects discount 
 - [Verified Engineering Quality](#verified-engineering-quality)
 - [Quick Start Guide](#quick-start-guide)
 - [Engineering Trade-Offs](#engineering-trade-offs)
-- [Release Baseline Status](#-release-baseline-status)
+- [Release Baseline Status](#release-baseline-status)
 - [Future Enterprise Roadmap](#future-enterprise-roadmap)
 
 ---
@@ -249,7 +247,7 @@ To maximize reviewer confidence and financial arithmetic determinism, specific d
 
 ---
 
-## 🚀 Release Baseline Status
+## Release Baseline Status
 
 | Check | Status | Verification Command / Details |
 | :--- | :---: | :--- |
