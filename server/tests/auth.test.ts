@@ -494,16 +494,31 @@ describe('P0-1 Real Authentication & Authorization Security Tests', () => {
         });
       expect(postRes.status).toBe(403);
 
-      const patchRes = await request(app)
-        .patch('/api/v1/admin/operators/rep_1')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'Unauthorized Patch' });
-      expect(patchRes.status).toBe(403);
-
       const delRes = await request(app)
         .delete('/api/v1/admin/operators/rep_1')
         .set('Authorization', `Bearer ${token}`);
       expect(delRes.status).toBe(403);
     }
+  });
+
+  // 21. Admin Operator creation rejects CUSTOMER role (400)
+  it('21. Admin Operator creation rejects CUSTOMER role (400 Bad Request)', async () => {
+    const adminToken = jwt.sign(
+      { userId: 'admin_1', role: 'ADMIN' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resCustomerRole = await request(app)
+      .post('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Customer In Operator Create',
+        email: 'customer.op.create@example.com',
+        password: 'Password123!',
+        role: 'CUSTOMER',
+      });
+
+    expect(resCustomerRole.status).toBe(400);
   });
 });

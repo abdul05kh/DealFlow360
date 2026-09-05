@@ -3,24 +3,27 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { auditService } from '../services/auditService';
+import {
+  createFirebaseUserAdmin,
+  deleteFirebaseUserAdmin,
+  setFirebaseUserDisabledAdmin,
+} from '../config/firebaseAdmin';
 import { z } from 'zod';
 
 export const adminRouter = Router();
 
-// Zod schemas for Admin Operator Management
+// Zod schemas for Admin Operator Management (Allow ONLY internal operator roles)
 const createOperatorSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'CUSTOMER']),
-  customerId: z.string().optional().nullable(),
+  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']),
 }).strict();
 
 const updateOperatorSchema = z.object({
   name: z.string().min(2).optional(),
-  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'CUSTOMER']).optional(),
+  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']).optional(),
   isActive: z.boolean().optional(),
-  customerId: z.string().optional().nullable(),
 }).strict();
 
 /**
@@ -69,7 +72,7 @@ adminRouter.get(
 
 /**
  * POST /api/v1/admin/operators
- * Creates a new operator or user record. Requires ADMIN role.
+ * Creates a new operator user record with optional Firebase Admin SDK provisioning. Requires ADMIN role.
  */
 adminRouter.post(
   '/admin/operators',
@@ -86,7 +89,7 @@ adminRouter.post(
         return;
       }
 
-      const { name, email, password, role, customerId } = parsed.data;
+      const { name, email, password, role } = parsed.data;
       const normalizedEmail = email.trim().toLowerCase();
 
       const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -98,26 +101,43 @@ adminRouter.post(
         return;
       }
 
-      if (role === 'CUSTOMER' && !customerId) {
+      // Step 1: Provision identity in Firebase Auth via Admin SDK (if configured)
+      let firebaseUid: string | null = null;
+      try {
+        firebaseUid = await createFirebaseUserAdmin({
+          email: normalizedEmail,
+          password,
+          displayName: name,
+        });
+      } catch (err: any) {
         res.status(400).json({
           error: 'BadRequest',
-          message: 'CustomerId is required when role is CUSTOMER.',
+          message: err.message || 'Firebase user creation failed.',
         });
         return;
       }
 
-      const passwordHash = await bcrypt.hash(password, 10);
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email: normalizedEmail,
-          passwordHash,
-          role,
-          customerId: customerId || null,
-          isActive: true,
-          firebaseUid: null, // Left null for controlled one-time Firebase identity linking on first login
-        },
-      });
+      // Step 2: Create Prisma User record (with compensating rollback if Prisma fails)
+      let user;
+      try {
+        const passwordHash = await bcrypt.hash(password, 10);
+        user = await prisma.user.create({
+          data: {
+            name,
+            email: normalizedEmail,
+            passwordHash,
+            role,
+            customerId: null,
+            isActive: true,
+            firebaseUid,
+          },
+        });
+      } catch (err: any) {
+        if (firebaseUid) {
+          await deleteFirebaseUserAdmin(firebaseUid);
+        }
+        throw err;
+      }
 
       await auditService.logAuditEvent({
         entityType: 'User',
@@ -130,6 +150,7 @@ adminRouter.post(
           name: user.name,
           email: user.email,
           role: user.role,
+          firebaseUid: user.firebaseUid,
         }),
       });
 
@@ -187,6 +208,11 @@ adminRouter.patch(
           message: 'System Administrator cannot deactivate their own active session.',
         });
         return;
+      }
+
+      // Sync Firebase Auth disabled state if isActive is being changed and firebaseUid exists
+      if (parsed.data.isActive !== undefined && existing.firebaseUid) {
+        await setFirebaseUserDisabledAdmin(existing.firebaseUid, !parsed.data.isActive);
       }
 
       const updated = await prisma.user.update({
@@ -247,6 +273,11 @@ adminRouter.delete(
           message: 'System Administrator cannot self-deactivate.',
         });
         return;
+      }
+
+      // Disable Firebase Auth account if firebaseUid is present
+      if (existing.firebaseUid) {
+        await setFirebaseUserDisabledAdmin(existing.firebaseUid, true);
       }
 
       const deactivated = await prisma.user.update({

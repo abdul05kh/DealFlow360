@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { firebaseAuth, signOut } from '../services/firebaseClient';
 import { apiClient } from '../services/api';
 import {
   AuthUserDTO,
@@ -13,6 +15,7 @@ import {
 export function useQuoteGovernance() {
   const [currentRole, setCurrentRole] = useState<DemoRole>('SALES_REP');
   const [authUser, setAuthUser] = useState<AuthUserDTO | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [customers, setCustomers] = useState<CustomerDTO[]>([]);
   const [products, setProducts] = useState<ProductDTO[]>([]);
@@ -46,26 +49,49 @@ export function useQuoteGovernance() {
     setCurrentRole(user.role);
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(firebaseAuth);
+    } catch {
+      // Ignore signout errors if already signed out
+    }
     apiClient.logout();
     setAuthUser(null);
     setCurrentRole('SALES_REP');
-    apiClient.setIdentity('SALES_REP');
-  };
-
-  // Check stored JWT session on mount
-  useEffect(() => {
-    async function checkAuthSession() {
-      if (apiClient.getToken()) {
-        const user = await apiClient.getCurrentUser();
-        if (user) {
-          setAuthUser(user);
-          setCurrentRole(user.role);
-        }
-      }
-    }
-    checkAuthSession();
+    setSavedQuote(null);
   }, []);
+
+  // Listen to Firebase Auth state for real session resolution & loading lock
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser) => {
+      setIsAuthLoading(true);
+      if (fbUser) {
+        try {
+          const idToken = await fbUser.getIdToken();
+          const data = await apiClient.loginWithFirebaseToken(idToken);
+          setAuthUser(data.user);
+          setCurrentRole(data.user.role);
+        } catch (err) {
+          console.warn('Firebase session verification failed:', err);
+          await handleLogout();
+        }
+      } else {
+        // Unauthenticated state
+        apiClient.logout();
+        setAuthUser(null);
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [handleLogout]);
+
+  // Register 401 unauthorized interceptor
+  useEffect(() => {
+    apiClient.setOnUnauthorized(() => {
+      handleLogout();
+    });
+  }, [handleLogout]);
 
   // Load master data dynamically
   const refreshMasterData = useCallback(async () => {
@@ -247,6 +273,7 @@ export function useQuoteGovernance() {
     currentRole,
     setRole: handleRoleChange,
     authUser,
+    isAuthLoading,
     isAuthModalOpen,
     setIsAuthModalOpen,
     handleAuthSuccess,

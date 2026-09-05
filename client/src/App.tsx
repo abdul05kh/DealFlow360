@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Header,
   CustomerSelector,
@@ -26,6 +26,7 @@ import {
   UserCheck,
   Truck,
   ArrowRight,
+  Shield,
 } from 'lucide-react';
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
     currentRole,
     setRole,
     authUser,
+    isAuthLoading,
     isAuthModalOpen,
     setIsAuthModalOpen,
     handleAuthSuccess,
@@ -62,15 +64,67 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'governance' | 'requests' | 'fulfillment' | 'admin' | 'customer'>('governance');
   const [approvalReason, setApprovalReason] = useState<string>('');
-  const [isDedicatedLoginActive, setIsDedicatedLoginActive] = useState<boolean>(false);
 
-  React.useEffect(() => {
-    if (currentRole === 'CUSTOMER' && activeTab !== 'customer') {
-      setActiveTab('customer');
-    } else if (currentRole !== 'CUSTOMER' && activeTab === 'customer') {
-      setActiveTab('governance');
+  useEffect(() => {
+    if (authUser) {
+      if (authUser.role === 'CUSTOMER' && activeTab !== 'customer') {
+        setActiveTab('customer');
+      } else if (authUser.role !== 'CUSTOMER' && activeTab === 'customer') {
+        setActiveTab('governance');
+      }
     }
-  }, [currentRole]);
+  }, [authUser, currentRole]);
+
+  // Synchronize hash route
+  useEffect(() => {
+    if (!isAuthLoading) {
+      if (!authUser) {
+        if (window.location.hash !== '#/login') {
+          window.location.hash = '#/login';
+        }
+      } else if (authUser.role === 'CUSTOMER') {
+        if (window.location.hash !== '#/customer') {
+          window.location.hash = '#/customer';
+        }
+      } else {
+        const expected = `#/operator/${activeTab}`;
+        if (window.location.hash !== expected) {
+          window.location.hash = expected;
+        }
+      }
+    }
+  }, [authUser, isAuthLoading, activeTab]);
+
+  // 1. AUTH_LOADING State: Render branded initialization screen
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4 font-sans antialiased text-slate-100 selection:bg-purple-600 selection:text-white">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-4 rounded-2xl shadow-2xl shadow-purple-900/40 animate-pulse">
+          <Shield className="w-10 h-10" />
+        </div>
+        <div className="text-center space-y-1">
+          <h1 className="text-xl font-bold text-white tracking-wide">DealFlow360</h1>
+          <p className="text-xs text-slate-400 font-medium">Authenticating session & verifying governance state...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. UNAUTHENTICATED State: Login page is ALWAYS the entry point and route guard
+  if (!authUser) {
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          handleAuthSuccess(user);
+          if (user.role === 'CUSTOMER') {
+            setActiveTab('customer');
+          } else {
+            setActiveTab('governance');
+          }
+        }}
+      />
+    );
+  }
 
   const isSalesRep = currentRole === 'SALES_REP';
   const isSalesManager = currentRole === 'SALES_MANAGER';
@@ -97,22 +151,6 @@ export default function App() {
   const isApprovedQuote =
     savedQuote && (savedQuote.status === 'APPROVED' || savedQuote.status === 'AUTO_APPROVED');
 
-  if (isDedicatedLoginActive) {
-    return (
-      <LoginView
-        onLoginSuccess={(user) => {
-          handleAuthSuccess(user);
-          setIsDedicatedLoginActive(false);
-          if (user.role === 'CUSTOMER') {
-            setActiveTab('customer');
-          } else {
-            setActiveTab('governance');
-          }
-        }}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
       {/* 1. Header with View Tabs, Persona Switcher & Real Auth Controls */}
@@ -123,7 +161,7 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         authUser={authUser}
-        onOpenAuthModal={() => setIsDedicatedLoginActive(true)}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
       />
 

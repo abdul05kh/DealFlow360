@@ -22,6 +22,10 @@ if (
   }
 }
 
+export function isFirebaseAdminConfigured(): boolean {
+  return !!(firebaseAdminApp && firebaseAdminModule);
+}
+
 export interface DecodedFirebaseIdentity {
   uid: string;
   email?: string;
@@ -49,4 +53,61 @@ export async function verifyFirebaseToken(idToken: string): Promise<DecodedFireb
   return {
     uid: idToken.startsWith('uid_') ? idToken : `uid_${idToken}`,
   };
+}
+
+/**
+ * Creates a new user identity in Firebase Auth via Firebase Admin SDK if configured.
+ * Returns the real Firebase UID on success, or null if Admin SDK is unconfigured or creation fails.
+ */
+export async function createFirebaseUserAdmin(params: {
+  email: string;
+  password?: string;
+  displayName?: string;
+}): Promise<string | null> {
+  if (!isFirebaseAdminConfigured()) {
+    return null;
+  }
+  try {
+    const userRecord = await firebaseAdminModule.auth(firebaseAdminApp).createUser({
+      email: params.email,
+      password: params.password || 'Password123!',
+      displayName: params.displayName,
+    });
+    return userRecord.uid;
+  } catch (err: any) {
+    console.warn('Firebase Admin createUser failed:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Updates disabled status for a Firebase identity via Firebase Admin SDK if configured.
+ */
+export async function setFirebaseUserDisabledAdmin(uid: string, disabled: boolean): Promise<boolean> {
+  if (!isFirebaseAdminConfigured() || !uid) {
+    return false;
+  }
+  try {
+    await firebaseAdminModule.auth(firebaseAdminApp).updateUser(uid, { disabled });
+    return true;
+  } catch (err: any) {
+    console.warn(`Firebase Admin updateUser disabled=${disabled} failed for uid ${uid}:`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Deletes a Firebase identity via Firebase Admin SDK (compensating transaction).
+ */
+export async function deleteFirebaseUserAdmin(uid: string): Promise<boolean> {
+  if (!isFirebaseAdminConfigured() || !uid) {
+    return false;
+  }
+  try {
+    await firebaseAdminModule.auth(firebaseAdminApp).deleteUser(uid);
+    return true;
+  } catch (err: any) {
+    console.warn(`Firebase Admin deleteUser failed for uid ${uid}:`, err.message);
+    return false;
+  }
 }

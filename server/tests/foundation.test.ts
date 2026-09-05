@@ -37,6 +37,10 @@ app.get('/api/v1/test-manager-only', authMiddleware(['SALES_MANAGER']), (req, re
 describe('Phase 1 Foundation Test Suite', () => {
   beforeAll(async () => {
     await prisma.$connect();
+    await prisma.customerTier.updateMany({
+      where: { code: 'GOLD' },
+      data: { maxOverallDiscount: 15.0 },
+    });
   });
 
   afterAll(async () => {

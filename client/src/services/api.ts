@@ -155,8 +155,17 @@ export class APIClient {
     this.currentUser = null;
   }
 
+  private onUnauthorized: (() => void) | null = null;
+
+  setOnUnauthorized(cb: (() => void) | null) {
+    this.onUnauthorized = cb;
+  }
+
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
+      if (response.status === 401 && this.onUnauthorized) {
+        this.onUnauthorized();
+      }
       let errorData: APIErrorResponse;
       try {
         errorData = await response.json();
