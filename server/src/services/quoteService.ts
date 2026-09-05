@@ -212,7 +212,7 @@ export class QuoteService {
       throw new NotFoundError('Quote', quoteId);
     }
 
-    const pendingNeg = existingQuote.negotiations.find((n) => n.status === 'SUBMITTED');
+    const pendingNeg = existingQuote.negotiations.find((n: { status: string }) => n.status === 'SUBMITTED');
     if (pendingNeg) {
       return this.respondToNegotiation(quoteId, pendingNeg.id, approverId, approverRole, actorName, {
         action: 'APPROVE',
@@ -291,7 +291,7 @@ export class QuoteService {
       throw new NotFoundError('Quote', quoteId);
     }
 
-    const pendingNeg = existingQuote.negotiations.find((n) => n.status === 'SUBMITTED');
+    const pendingNeg = existingQuote.negotiations.find((n: { status: string }) => n.status === 'SUBMITTED');
     if (pendingNeg) {
       return this.respondToNegotiation(quoteId, pendingNeg.id, approverId, approverRole, actorName, {
         action: 'REJECT',
@@ -447,7 +447,7 @@ export class QuoteService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return quotes.map((q) => this.sanitizeCustomerQuoteDTO(q));
+    return quotes.map((q: any) => this.sanitizeCustomerQuoteDTO(q));
   }
 
   /**
@@ -493,7 +493,7 @@ export class QuoteService {
     }
 
     // Map evaluation items supporting Partial Line Negotiation
-    const evaluationItems = quote.lines.map((line) => {
+    const evaluationItems = quote.lines.map((line: any) => {
       const counterLine = input.lines.find((l: { quoteLineId: string }) => l.quoteLineId === line.id);
       return {
         productId: line.productId,
@@ -557,7 +557,7 @@ export class QuoteService {
 
         // Update QuoteLines with negotiated terms
         for (const evalLine of evalResult.financials.lines) {
-          const dbLine = quote.lines.find((l) => l.productId === evalLine.productId);
+          const dbLine = quote.lines.find((l: any) => l.productId === evalLine.productId);
           if (dbLine) {
             await tx.quoteLine.update({
               where: { id: dbLine.id },
@@ -638,7 +638,7 @@ export class QuoteService {
       throw new NotFoundError('Quote', quoteId);
     }
 
-    const negotiation = quote.negotiations.find((n) => n.id === negotiationId);
+    const negotiation = quote.negotiations.find((n: any) => n.id === negotiationId);
     if (!negotiation || negotiation.status !== 'SUBMITTED') {
       const err: any = new Error('Active submitted negotiation not found for ID: ' + negotiationId);
       err.statusCode = 400;
@@ -647,8 +647,8 @@ export class QuoteService {
 
     if (input.action === 'APPROVE') {
       // Prevent stale approval: re-evaluate fresh at approval time
-      const evaluationItems = quote.lines.map((line) => {
-        const counterLine = negotiation.lines.find((l) => l.quoteLineId === line.id);
+      const evaluationItems = quote.lines.map((line: any) => {
+        const counterLine = negotiation.lines.find((l: any) => l.quoteLineId === line.id);
         return {
           productId: line.productId,
           quantity: line.quantity,
@@ -690,7 +690,7 @@ export class QuoteService {
 
         // 3. Update QuoteLine records with negotiated terms
         for (const evalLine of evalResult.financials.lines) {
-          const dbLine = quote.lines.find((l) => l.productId === evalLine.productId);
+          const dbLine = quote.lines.find((l: any) => l.productId === evalLine.productId);
           if (dbLine) {
             await tx.quoteLine.update({
               where: { id: dbLine.id },
@@ -705,7 +705,7 @@ export class QuoteService {
         }
 
         // 4. Update ApprovalRequest
-        const pendingReq = quote.approvalRequests.find((r) => r.status === 'PENDING');
+        const pendingReq = quote.approvalRequests.find((r: any) => r.status === 'PENDING');
         if (pendingReq) {
           await tx.approvalRequest.update({
             where: { id: pendingReq.id },
@@ -755,7 +755,7 @@ export class QuoteService {
           data: { status: 'APPROVED' },
         });
 
-        const pendingReq = quote.approvalRequests.find((r) => r.status === 'PENDING');
+        const pendingReq = quote.approvalRequests.find((r: any) => r.status === 'PENDING');
         if (pendingReq) {
           await tx.approvalRequest.update({
             where: { id: pendingReq.id },
