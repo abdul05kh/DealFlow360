@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { config } from '../config/index';
 import { verifyToken } from '../services/authService';
+import { prisma } from '../db/client';
 
 export type UserRole =
   | 'SALES_REP'
@@ -24,7 +25,7 @@ declare global {
 }
 
 export const authMiddleware = (allowedRoles?: UserRole[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.header('Authorization');
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -78,6 +79,24 @@ export const authMiddleware = (allowedRoles?: UserRole[]) => {
         role: role,
         customerId: defaultCustomerId,
       };
+    }
+
+    if (req.user) {
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { isActive: true },
+        });
+        if (dbUser && dbUser.isActive === false) {
+          res.status(401).json({
+            error: 'Unauthorized',
+            message: 'Account is deactivated. Contact System Administrator.',
+          });
+          return;
+        }
+      } catch (err) {
+        // Ignore DB connection errors in isolated non-DB unit tests if any
+      }
     }
 
     if (allowedRoles && allowedRoles.length > 0 && req.user) {

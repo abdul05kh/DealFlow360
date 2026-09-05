@@ -460,6 +460,10 @@ export interface OperatorDTO {
   isActive: boolean;
   customerId?: string | null;
   quoteCount?: number;
+  metrics?: {
+    quotesCreated: number;
+    approvalsHandled: number;
+  };
 }
 
 export interface CreateOperatorPayloadDTO {

@@ -12,13 +12,13 @@ const createOperatorSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'ADMIN', 'CUSTOMER']),
+  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'CUSTOMER']),
   customerId: z.string().optional().nullable(),
 }).strict();
 
 const updateOperatorSchema = z.object({
   name: z.string().min(2).optional(),
-  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'ADMIN', 'CUSTOMER']).optional(),
+  role: z.enum(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER', 'CUSTOMER']).optional(),
   isActive: z.boolean().optional(),
   customerId: z.string().optional().nullable(),
 }).strict();
@@ -115,39 +115,32 @@ adminRouter.post(
           role,
           customerId: customerId || null,
           isActive: true,
+          firebaseUid: null, // Left null for controlled one-time Firebase identity linking on first login
         },
-      });
-
-      // Assign deterministic firebaseUid identity mapping
-      const firebaseUid = `uid_${user.id.replace(/-/g, '')}`;
-      const updatedUser = await prisma.user.update({
-        where: { id: user.id },
-        data: { firebaseUid },
       });
 
       await auditService.logAuditEvent({
         entityType: 'User',
-        entityId: updatedUser.id,
+        entityId: user.id,
         actorId: req.user?.id || 'admin_1',
         actorName: 'System Admin',
         action: 'CREATE_OPERATOR',
         newStateJson: JSON.stringify({
-          id: updatedUser.id,
-          name: updatedUser.name,
-          email: updatedUser.email,
-          role: updatedUser.role,
-          firebaseUid,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
         }),
       });
 
       res.status(201).json({
-        id: updatedUser.id,
-        firebaseUid: updatedUser.firebaseUid,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive,
-        customerId: updatedUser.customerId,
+        id: user.id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        customerId: user.customerId,
       });
     } catch (error: any) {
       res.status(400).json({

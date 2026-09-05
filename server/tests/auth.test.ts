@@ -398,4 +398,112 @@ describe('P0-1 Real Authentication & Authorization Security Tests', () => {
     expect(resMgr.status).toBe(200);
     expect(Array.isArray(resMgr.body)).toBe(true);
   });
+
+  // 18. Admin Operator creation rejects ADMIN role and invalid roles
+  it('18. Admin Operator creation rejects ADMIN role and invalid/arbitrary roles (400)', async () => {
+    const adminToken = jwt.sign(
+      { userId: 'admin_1', role: 'ADMIN' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resAdminRole = await request(app)
+      .post('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Hacker Admin Account',
+        email: 'hacker.admin.create@example.com',
+        password: 'Password123!',
+        role: 'ADMIN',
+      });
+
+    expect(resAdminRole.status).toBe(400);
+
+    const resArbitraryRole = await request(app)
+      .post('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Arbitrary Role Account',
+        email: 'arbitrary.role@example.com',
+        password: 'Password123!',
+        role: 'SUPER_USER',
+      });
+
+    expect(resArbitraryRole.status).toBe(400);
+  });
+
+  // 19. Admin Operator creation rejects client-injected firebaseUid or passwordHash (400)
+  it('19. Admin Operator creation rejects client-injected firebaseUid or passwordHash (400)', async () => {
+    const adminToken = jwt.sign(
+      { userId: 'admin_1', role: 'ADMIN' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resExtraUid = await request(app)
+      .post('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Extra Uid Injection',
+        email: 'extra.uid@example.com',
+        password: 'Password123!',
+        role: 'SALES_REP',
+        firebaseUid: 'fake_uid_123',
+      });
+
+    expect(resExtraUid.status).toBe(400);
+
+    const resExtraHash = await request(app)
+      .post('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Extra Hash Injection',
+        email: 'extra.hash@example.com',
+        password: 'Password123!',
+        role: 'SALES_REP',
+        passwordHash: '$2a$10$fakehash',
+      });
+
+    expect(resExtraHash.status).toBe(400);
+  });
+
+  // 20. Comprehensive non-ADMIN 403 denial on all operator admin endpoints
+  it('20. CUSTOMER, SALES_REP, SALES_MANAGER, and OPERATIONS_MANAGER receive 403 on admin operator endpoints', async () => {
+    const roles = ['CUSTOMER', 'SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER'];
+
+    for (const role of roles) {
+      const token = jwt.sign(
+        { userId: 'test_user_id', role },
+        config.jwtSecret,
+        { expiresIn: '1h' }
+      );
+
+      const getRes = await request(app)
+        .get('/api/v1/admin/operators')
+        .set('Authorization', `Bearer ${token}`);
+      expect(getRes.status).toBe(403);
+
+      const postRes = await request(app)
+        .post('/api/v1/admin/operators')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Unauthorized Create',
+          email: 'unauth@example.com',
+          password: 'Password123!',
+          role: 'SALES_REP',
+        });
+      expect(postRes.status).toBe(403);
+
+      const patchRes = await request(app)
+        .patch('/api/v1/admin/operators/rep_1')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Unauthorized Patch' });
+      expect(patchRes.status).toBe(403);
+
+      const delRes = await request(app)
+        .delete('/api/v1/admin/operators/rep_1')
+        .set('Authorization', `Bearer ${token}`);
+      expect(delRes.status).toBe(403);
+    }
+  });
 });
