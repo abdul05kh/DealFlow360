@@ -10,23 +10,31 @@ import { fulfillmentService } from '../services/fulfillmentService';
 export const fulfillmentRouter = Router();
 
 /**
- * GET /api/v1/warehouses
+ * GET /api/v1/warehouses & GET /api/v1/fulfillment/warehouses
  * Read-only endpoint returning active distribution warehouses and per-product inventory stocks.
  */
+const getWarehousesHandler = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const warehouses = await fulfillmentService.getAllWarehouses();
+    res.status(200).json(warehouses);
+  } catch (error: any) {
+    res.status(500).json({
+      error: 'InternalServerError',
+      message: 'Failed to retrieve warehouses master data.',
+    });
+  }
+};
+
 fulfillmentRouter.get(
   '/warehouses',
   authMiddleware(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']),
-  async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const warehouses = await fulfillmentService.getAllWarehouses();
-      res.status(200).json(warehouses);
-    } catch (error: any) {
-      res.status(500).json({
-        error: 'InternalServerError',
-        message: 'Failed to retrieve warehouses master data.',
-      });
-    }
-  }
+  getWarehousesHandler
+);
+
+fulfillmentRouter.get(
+  '/fulfillment/warehouses',
+  authMiddleware(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']),
+  getWarehousesHandler
 );
 
 /**
@@ -35,7 +43,7 @@ fulfillmentRouter.get(
  * MUST NOT mutate inventory, create fulfillment plans, or write audit events.
  */
 fulfillmentRouter.post(
-  '/evaluate',
+  '/fulfillment/evaluate',
   authMiddleware(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']),
   validatePayload(EvaluateFulfillmentSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -58,7 +66,7 @@ fulfillmentRouter.post(
  * Requires SALES_MANAGER or OPERATIONS_MANAGER role. (SALES_REP is blocked with 403).
  */
 fulfillmentRouter.post(
-  '/allocate',
+  '/fulfillment/allocate',
   authMiddleware(['SALES_MANAGER', 'OPERATIONS_MANAGER']),
   validatePayload(AllocateFulfillmentSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -102,7 +110,7 @@ fulfillmentRouter.post(
  * Retrieves persisted fulfillment plan details, shipment splits, and audit history.
  */
 fulfillmentRouter.get(
-  '/quote/:quoteId',
+  '/fulfillment/quote/:quoteId',
   authMiddleware(['SALES_REP', 'SALES_MANAGER', 'OPERATIONS_MANAGER']),
   async (req: Request, res: Response): Promise<void> => {
     try {

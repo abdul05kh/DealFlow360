@@ -14,8 +14,8 @@ app.use(express.json());
 // API Routes
 app.use('/api/v1', healthRouter);
 app.use('/api/v1', masterDataRouter);
+app.use('/api/v1', fulfillmentRouter);
 app.use('/api/v1/quotes', quoteRouter);
-app.use('/api/v1/fulfillment', fulfillmentRouter);
 
 // Safe Global Error Handler (No stack trace or internal database leaks exposed)
 app.use(
