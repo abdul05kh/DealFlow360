@@ -201,7 +201,7 @@ export class QuoteService {
   async approveQuote(
     quoteId: string,
     approverId: string,
-    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER',
+    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER' | 'ADMIN',
     actorName: string,
     reason?: string
   ) {
@@ -280,7 +280,7 @@ export class QuoteService {
   async rejectQuote(
     quoteId: string,
     approverId: string,
-    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER',
+    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER' | 'ADMIN',
     actorName: string,
     reason?: string
   ) {
@@ -623,7 +623,7 @@ export class QuoteService {
     quoteId: string,
     negotiationId: string,
     approverId: string,
-    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER',
+    approverRole: 'SALES_MANAGER' | 'FINANCE_APPROVER' | 'ADMIN',
     actorName: string,
     input: RespondNegotiationInputDTO
   ) {

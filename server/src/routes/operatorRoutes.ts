@@ -17,24 +17,22 @@ operatorRouter.get(
       const role = req.user?.role;
       const userId = req.user?.id;
 
-      let whereClause: any = {};
+      let whereClause: any = {
+        status: 'SUBMITTED',
+      };
 
       if (role === 'SALES_REP') {
         // Sales Reps can only view customer negotiation requests for quotes created by them
-        whereClause = {
-          quote: {
-            salesRepId: userId,
-          },
+        whereClause.quote = {
+          salesRepId: userId,
         };
       } else if (role === 'OPERATIONS_MANAGER') {
         // Operations Managers view requests for approved deals or deals requiring fulfillment context
-        whereClause = {
-          quote: {
-            status: { in: ['APPROVED', 'PENDING_APPROVAL'] },
-          },
+        whereClause.quote = {
+          status: { in: ['APPROVED', 'PENDING_APPROVAL'] },
         };
       }
-      // SALES_MANAGER & ADMIN see all customer negotiation requests across all accounts
+      // SALES_MANAGER & ADMIN see all submitted customer negotiation requests across all accounts
 
       const negotiations = await prisma.quoteNegotiation.findMany({
         where: whereClause,

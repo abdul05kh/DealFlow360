@@ -159,14 +159,14 @@ quoteRouter.get(
  */
 quoteRouter.post(
   '/:quoteId/negotiations/:negotiationId/respond',
-  authMiddleware(['SALES_MANAGER']),
+  authMiddleware(['SALES_MANAGER', 'ADMIN']),
   validatePayload(respondNegotiationSchema),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const quoteId = req.params.quoteId as string;
       const negotiationId = req.params.negotiationId as string;
       const userId = req.user?.id || 'mgr_1';
-      const userRole = req.user?.role as 'SALES_MANAGER';
+      const userRole = (req.user?.role || 'SALES_MANAGER') as 'SALES_MANAGER' | 'ADMIN';
 
       const result = await quoteService.respondToNegotiation(
         quoteId,
@@ -187,7 +187,7 @@ quoteRouter.post(
         res.status(409).json({ error: 'Conflict', message: error.message });
         return;
       }
-      res.status(400).json({
+      res.status(error.statusCode || 400).json({
         error: error.name || 'BadRequest',
         message: error.message,
       });

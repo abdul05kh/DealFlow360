@@ -12,6 +12,7 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
   let customerBToken: string;
   let managerToken: string;
   let repToken: string;
+  let adminToken: string;
 
   beforeEach(async () => {
     config.nodeEnv = 'test';
@@ -40,6 +41,13 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
     // Sales Rep token
     repToken = jwt.sign(
       { userId: 'rep_1', role: 'SALES_REP' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    // Admin token
+    adminToken = jwt.sign(
+      { userId: 'admin_1', role: 'ADMIN' },
       config.jwtSecret,
       { expiresIn: '1h' }
     );
@@ -348,5 +356,64 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
     // Verify ABSENCE of secret manager internal reason in negotiation DTO
     expect(dto.negotiationHistory[0].managerReason).toBeUndefined();
     expect(JSON.stringify(dto)).not.toContain('SECRET_INTERNAL_MARGIN_NOTE_123');
+  });
+
+  // 8. ADMIN Role Response & Non-SUBMITTED Negotiation Rejection Test
+  it('8. Allows ADMIN role to respond and rejects duplicate/non-SUBMITTED response with 400', async () => {
+    // Create quote & negotiation
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${repToken}`)
+      .send({
+        customerId: 'cust_acme_101',
+        items: [{ productId: 'prod_server_01', quantity: 1, discountPercent: 5 }],
+      });
+    expect(createRes.status).toBe(201);
+    const quoteId = createRes.body.id;
+    const lineId = createRes.body.lines[0].id;
+
+    const negRes = await request(app)
+      .post(`/api/v1/customer/quotes/${quoteId}/negotiate`)
+      .set('Authorization', `Bearer ${customerAToken}`)
+      .send({
+        lines: [{ quoteLineId: lineId, requestedDiscount: 20 }],
+      });
+    expect(negRes.status).toBe(200);
+    const negId = negRes.body.negotiationHistory[0].id;
+
+    // Verify operator requests queue returns the submitted request
+    const queueResBefore = await request(app)
+      .get('/api/v1/operator/customer-requests')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(queueResBefore.status).toBe(200);
+    expect(queueResBefore.body.some((r: any) => r.id === negId)).toBe(true);
+
+    // ADMIN responds to negotiation -> 200 OK
+    const adminRespondRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/negotiations/${negId}/respond`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'APPROVE',
+        managerReason: 'Admin override approval',
+        customerResponseNote: 'Approved by Admin',
+      });
+    expect(adminRespondRes.status).toBe(200);
+
+    // Attempt to respond AGAIN to the now APPROVED negotiation -> 400 Bad Request
+    const duplicateRespondRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/negotiations/${negId}/respond`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        action: 'REJECT',
+        managerReason: 'Stale attempt',
+      });
+    expect(duplicateRespondRes.status).toBe(400);
+
+    // Verify operator requests queue no longer returns the completed request
+    const queueResAfter = await request(app)
+      .get('/api/v1/operator/customer-requests')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(queueResAfter.status).toBe(200);
+    expect(queueResAfter.body.some((r: any) => r.id === negId)).toBe(false);
   });
 });

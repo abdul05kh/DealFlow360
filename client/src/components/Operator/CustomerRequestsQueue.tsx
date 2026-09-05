@@ -46,7 +46,14 @@ export const CustomerRequestsQueue: React.FC<CustomerRequestsQueueProps> = ({ cu
   }, [currentRole]);
 
   const handleRespond = async (action: 'APPROVE' | 'REJECT') => {
-    if (!selectedReq) return;
+    if (!selectedReq || isSubmitting) return;
+    if (selectedReq.status && selectedReq.status !== 'SUBMITTED') {
+      setActionMessage({
+        type: 'error',
+        text: 'This counter-offer is no longer active and cannot be responded to.',
+      });
+      return;
+    }
     setIsSubmitting(true);
     setActionMessage(null);
     try {
