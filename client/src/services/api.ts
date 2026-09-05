@@ -8,6 +8,7 @@ import {
   CreateOperatorPayloadDTO,
   CreateProductCategoryPayloadDTO,
   CreateProductPayloadDTO,
+  CreditNoteDTO,
   CustomerDTO,
   CustomerNegotiationDTO,
   CustomerQuoteDTO,
@@ -512,6 +513,24 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<InvoiceDTO>(res);
+  }
+
+  async cancelSubscription(subscriptionId: string): Promise<SubscriptionDTO> {
+    const res = await fetch(`${API_BASE}/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({}),
+    });
+    return this.handleResponse<SubscriptionDTO>(res);
+  }
+
+  async issueCreditNote(invoiceId: string, amountMinor: number, reason: string): Promise<CreditNoteDTO> {
+    const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/credit-note`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ amountMinor, reason }),
+    });
+    return this.handleResponse<CreditNoteDTO>(res);
   }
 }
 

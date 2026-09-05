@@ -30,6 +30,7 @@ model Customer {
   negotiations  QuoteNegotiation[]
   invoices      Invoice[]
   subscriptions Subscription[]
+  creditNotes   CreditNote[]
 
   @@index([name])
   @@index([status])
@@ -170,6 +171,7 @@ model Invoice {
   totalMinor    Int
   createdAt     DateTime      @default(now())
   lines         InvoiceLine[]
+  creditNotes   CreditNote[]
 }
 
 model InvoiceLine {
@@ -337,4 +339,20 @@ model FulfillmentItem {
   allocatedQuantity Int
   status            String          // 'FULFILLED' | 'BACKORDERED'
   shippingCost      Float           @default(0.0)
+}
+
+model CreditNote {
+  id               String   @id @default(uuid())
+  creditNoteNumber String   @unique
+  invoiceId        String
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id])
+  amountMinor      Int
+  reason           String
+  status           String   @default("ISSUED")
+  createdAt        DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([customerId])
 }

@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import {
   BillingSummaryDTO,
+  CreditNoteDTO,
   InvoiceDTO,
   InvoiceLineDTO,
   NotFoundError,
@@ -394,7 +395,7 @@ export class BillingService {
       where: { id: quoteId },
       include: {
         customer: true,
-        invoice: { include: { lines: { include: { product: true } } } },
+        invoice: { include: { lines: { include: { product: true } }, creditNotes: true } },
         subscriptions: { include: { lines: { include: { product: true } } } },
       },
     });
@@ -432,6 +433,16 @@ export class BillingService {
             discountPercent: l.discountPercent,
             discountAmountMinor: l.discountAmountMinor,
             netTotalMinor: l.netTotalMinor,
+          })),
+          creditNotes: (quote.invoice.creditNotes || []).map((cn: any) => ({
+            id: cn.id,
+            creditNoteNumber: cn.creditNoteNumber,
+            invoiceId: cn.invoiceId,
+            customerId: cn.customerId,
+            amountMinor: cn.amountMinor,
+            reason: cn.reason,
+            status: cn.status,
+            createdAt: cn.createdAt.toISOString(),
           })),
         }
       : null;
@@ -514,6 +525,7 @@ export class BillingService {
       include: {
         customer: true,
         lines: { include: { product: true } },
+        creditNotes: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -552,6 +564,16 @@ export class BillingService {
         discountAmountMinor: l.discountAmountMinor,
         netTotalMinor: l.netTotalMinor,
       })),
+      creditNotes: (inv.creditNotes || []).map((cn: any) => ({
+        id: cn.id,
+        creditNoteNumber: cn.creditNoteNumber,
+        invoiceId: cn.invoiceId,
+        customerId: cn.customerId,
+        amountMinor: cn.amountMinor,
+        reason: cn.reason,
+        status: cn.status,
+        createdAt: cn.createdAt.toISOString(),
+      })),
     }));
 
     const subscriptionDTOs: SubscriptionDTO[] = subscriptions.map((sub: any) => ({
@@ -585,6 +607,227 @@ export class BillingService {
     return {
       invoices: invoiceDTOs,
       subscriptions: subscriptionDTOs,
+    };
+  }
+
+  /**
+   * Minimal subscription cancellation workflow (ACTIVE -> CANCELLED).
+   * Validates authorization, current status, customer isolation, and creates audit log.
+   */
+  async cancelSubscription(
+    subscriptionId: string,
+    actorId: string,
+    actorName: string,
+    userRole: string,
+    userCustomerId?: string | null
+  ): Promise<SubscriptionDTO> {
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: {
+        customer: true,
+        lines: { include: { product: true } },
+      },
+    });
+
+    if (!subscription) {
+      throw new NotFoundError('Subscription', subscriptionId);
+    }
+
+    // 1. Tenant Isolation & Role Authorization Check
+    if (userRole === 'CUSTOMER') {
+      if (!userCustomerId || subscription.customerId !== userCustomerId) {
+        throw new NotFoundError('Subscription', subscriptionId);
+      }
+    }
+
+    // 2. Status Validation
+    if (subscription.status === 'CANCELLED') {
+      const err: any = new Error(`Subscription ${subscription.subscriptionNumber} is already cancelled.`);
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (subscription.status !== 'ACTIVE') {
+      const err: any = new Error(`Cannot cancel subscription in status '${subscription.status}'. Only ACTIVE subscriptions can be cancelled.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Transactional cancellation & Audit Logging
+    const updatedSub = await prisma.$transaction(async (tx) => {
+      const cancelled = await tx.subscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'CANCELLED' },
+        include: {
+          customer: true,
+          lines: { include: { product: true } },
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          entityType: 'SUBSCRIPTION',
+          entityId: subscriptionId,
+          actorId,
+          actorName,
+          action: 'CANCEL_SUBSCRIPTION',
+          newStateJson: JSON.stringify({
+            subscriptionId,
+            subscriptionNumber: cancelled.subscriptionNumber,
+            status: 'CANCELLED',
+          }),
+        },
+      });
+
+      return cancelled;
+    });
+
+    return {
+      id: updatedSub.id,
+      subscriptionNumber: updatedSub.subscriptionNumber,
+      quoteId: updatedSub.quoteId,
+      customerId: updatedSub.customerId,
+      customerName: updatedSub.customer.name,
+      status: updatedSub.status,
+      billingInterval: updatedSub.billingInterval as 'MONTHLY' | 'QUARTERLY' | 'YEARLY',
+      recurringAmountMinor: updatedSub.recurringAmountMinor,
+      currency: updatedSub.currency,
+      startDate: updatedSub.startDate.toISOString(),
+      nextBillingDate: updatedSub.nextBillingDate.toISOString(),
+      createdAt: updatedSub.createdAt.toISOString(),
+      lines: updatedSub.lines.map((l: any) => ({
+        id: l.id,
+        quoteLineId: l.quoteLineId,
+        productId: l.productId,
+        productName: l.product?.name || 'Product',
+        sku: l.product?.sku || '',
+        description: l.description,
+        quantity: l.quantity,
+        unitPriceMinor: l.unitPriceMinor,
+        discountPercent: l.discountPercent,
+        discountAmountMinor: l.discountAmountMinor,
+        netTotalMinor: l.netTotalMinor,
+      })),
+    };
+  }
+
+  /**
+   * Minimal credit note issuance workflow.
+   * Enforces positive integer minor-unit amount, invoice eligibility cap, role authorization, tenant isolation, and audit logging.
+   */
+  async issueCreditNote(
+    invoiceId: string,
+    amountMinor: number,
+    reason: string,
+    actorId: string,
+    actorName: string,
+    userRole: string,
+    userCustomerId?: string | null
+  ): Promise<CreditNoteDTO> {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        customer: true,
+        creditNotes: true,
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundError('Invoice', invoiceId);
+    }
+
+    // 1. Role Authorization Check (Operations Manager, Admin, Sales Manager)
+    const allowedRoles = ['OPERATIONS_MANAGER', 'ADMIN', 'SALES_MANAGER'];
+    if (!allowedRoles.includes(userRole)) {
+      const err: any = new Error(`Forbidden: Role ${userRole} is not authorized to issue credit notes.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2. Tenant Isolation Check
+    if (userRole === 'CUSTOMER') {
+      if (!userCustomerId || invoice.customerId !== userCustomerId) {
+        throw new NotFoundError('Invoice', invoiceId);
+      }
+    }
+
+    // 3. Amount & Reason Validation (Positive Integer Minor Unit)
+    if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
+      const err: any = new Error('Credit note amount must be a positive integer minor-unit (paise/cents).');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!reason || reason.trim() === '') {
+      const err: any = new Error('Credit note reason is required.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 4. Eligible Invoice Cap Check
+    const existingCreditSum = invoice.creditNotes.reduce((sum, cn) => sum + cn.amountMinor, 0);
+    const eligibleAmount = invoice.totalMinor - existingCreditSum;
+
+    if (amountMinor > eligibleAmount) {
+      const err: any = new Error(
+        `Credit note amount (${amountMinor}) exceeds remaining eligible invoice balance (${eligibleAmount}).`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 5. Transactional Creation & Audit Logging
+    const creditNoteNumber = `CN-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const createdCN = await prisma.$transaction(async (tx) => {
+      const cn = await tx.creditNote.create({
+        data: {
+          creditNoteNumber,
+          invoiceId: invoice.id,
+          customerId: invoice.customerId,
+          amountMinor,
+          reason: reason.trim(),
+          status: 'ISSUED',
+        },
+        include: {
+          customer: true,
+          invoice: true,
+        },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          entityType: 'INVOICE',
+          entityId: invoiceId,
+          actorId,
+          actorName,
+          action: 'ISSUE_CREDIT_NOTE',
+          newStateJson: JSON.stringify({
+            creditNoteId: cn.id,
+            creditNoteNumber: cn.creditNoteNumber,
+            invoiceId,
+            invoiceNumber: invoice.invoiceNumber,
+            amountMinor,
+            reason: cn.reason,
+            status: 'ISSUED',
+          }),
+        },
+      });
+
+      return cn;
+    });
+
+    return {
+      id: createdCN.id,
+      creditNoteNumber: createdCN.creditNoteNumber,
+      invoiceId: createdCN.invoiceId,
+      invoiceNumber: createdCN.invoice.invoiceNumber,
+      customerId: createdCN.customerId,
+      customerName: createdCN.customer.name,
+      amountMinor: createdCN.amountMinor,
+      reason: createdCN.reason,
+      status: createdCN.status,
+      createdAt: createdCN.createdAt.toISOString(),
     };
   }
 }

@@ -758,4 +758,236 @@ describe('Increment 4 — Hybrid Billing & Subscription Engine Tests', () => {
     expect(Number.isInteger(sub.lines[0].unitPriceMinor)).toBe(true);
     expect(Number.isInteger(sub.lines[0].netTotalMinor)).toBe(true);
   });
+
+  it('24. Cancels ACTIVE subscription (ACTIVE -> CANCELLED) and creates CANCEL_SUBSCRIPTION audit log', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdRecurringMonthly, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const subId = billingRes.body.subscriptions[0].id;
+
+    const cancelRes = await request(app)
+      .post(`/api/v1/subscriptions/${subId}/cancel`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    expect(cancelRes.status).toBe(200);
+    expect(cancelRes.body.status).toBe('CANCELLED');
+
+    const dbSub = await prisma.subscription.findUniqueOrThrow({ where: { id: subId } });
+    expect(dbSub.status).toBe('CANCELLED');
+
+    const audit = await prisma.auditEvent.findFirst({
+      where: { entityType: 'SUBSCRIPTION', entityId: subId, action: 'CANCEL_SUBSCRIPTION' },
+    });
+    expect(audit).not.toBeNull();
+  });
+
+  it('25. Rejects cancelling an already CANCELLED subscription with HTTP 409', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdRecurringMonthly, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const subId = billingRes.body.subscriptions[0].id;
+
+    // First cancellation succeeds
+    await request(app)
+      .post(`/api/v1/subscriptions/${subId}/cancel`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    // Second cancellation fails with 409 Conflict
+    const dupRes = await request(app)
+      .post(`/api/v1/subscriptions/${subId}/cancel`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    expect(dupRes.status).toBe(409);
+    expect(dupRes.body.message).toContain('already cancelled');
+  });
+
+  it('26. Issues valid credit note against invoice (integer minor units, unique CN number, audit log)', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 2, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+    const invoiceTotal = billingRes.body.invoice.totalMinor;
+
+    const cnAmount = Math.floor(invoiceTotal / 2);
+    const cnRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${opsToken}`)
+      .send({ amountMinor: cnAmount, reason: 'Commercial SLA Adjustment' });
+
+    expect(cnRes.status).toBe(201);
+    expect(cnRes.body.creditNoteNumber).toContain('CN-');
+    expect(cnRes.body.amountMinor).toBe(cnAmount);
+    expect(cnRes.body.reason).toBe('Commercial SLA Adjustment');
+
+    const dbCN = await prisma.creditNote.findUniqueOrThrow({ where: { id: cnRes.body.id } });
+    expect(dbCN.amountMinor).toBe(cnAmount);
+
+    const audit = await prisma.auditEvent.findFirst({
+      where: { entityType: 'INVOICE', entityId: invoiceId, action: 'ISSUE_CREDIT_NOTE' },
+    });
+    expect(audit).not.toBeNull();
+  });
+
+  it('27. Rejects credit note with zero or negative amount (400 Bad Request)', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    const negRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${opsToken}`)
+      .send({ amountMinor: -500, reason: 'Invalid Amount' });
+
+    expect(negRes.status).toBe(400);
+
+    const zeroRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${opsToken}`)
+      .send({ amountMinor: 0, reason: 'Zero Amount' });
+
+    expect(zeroRes.status).toBe(400);
+  });
+
+  it('28. Rejects credit note amount exceeding eligible invoice balance (400 Bad Request)', async () => {
+    const opsToken = generateToken({ userId: 'ops_1', role: 'OPERATIONS_MANAGER' });
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+    const invoiceTotal = billingRes.body.invoice.totalMinor;
+
+    const excessiveRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${opsToken}`)
+      .send({ amountMinor: invoiceTotal + 1000, reason: 'Excessive Refund' });
+
+    expect(excessiveRes.status).toBe(400);
+    expect(excessiveRes.body.message).toContain('exceeds remaining eligible invoice balance');
+  });
+
+  it('29. Rejects credit note creation by unauthorized roles (403 Forbidden)', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    // Sales Rep attempting to issue credit note is rejected with 403
+    const unauthRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({ amountMinor: 100, reason: 'Unauthorized attempt' });
+
+    expect(unauthRes.status).toBe(403);
+  });
+
+  it('30. Enforces customer isolation for cross-customer credit note requests (404/403)', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({
+        customerId: testCustomerId,
+        items: [{ productId: testProductIdOneTime, quantity: 1, discountPercent: 0 }],
+      });
+
+    const quoteId = createRes.body.id;
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: 'APPROVED' } });
+
+    const billingRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/billing`)
+      .set('Authorization', `Bearer ${salesRepToken}`)
+      .send({});
+
+    const invoiceId = billingRes.body.invoice.id;
+
+    const crossRes = await request(app)
+      .post(`/api/v1/invoices/${invoiceId}/credit-note`)
+      .set('Authorization', `Bearer ${otherCustomerToken}`)
+      .send({ amountMinor: 100, reason: 'Cross customer' });
+
+    expect(crossRes.status).toBe(403);
+  });
 });

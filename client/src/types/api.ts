@@ -545,6 +545,19 @@ export interface InvoiceLineDTO {
   netTotalMinor: number;
 }
 
+export interface CreditNoteDTO {
+  id: string;
+  creditNoteNumber: string;
+  invoiceId: string;
+  invoiceNumber?: string;
+  customerId: string;
+  customerName?: string;
+  amountMinor: number;
+  reason: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface InvoiceDTO {
   id: string;
   invoiceNumber: string;
@@ -558,6 +571,7 @@ export interface InvoiceDTO {
   totalMinor: number;
   createdAt: string;
   lines: InvoiceLineDTO[];
+  creditNotes?: CreditNoteDTO[];
 }
 
 export interface SubscriptionLineDTO {
