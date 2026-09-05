@@ -41,7 +41,8 @@ describe('Phase 1 Foundation Test Suite', () => {
     const customers = await prisma.customer.findMany({ include: { tier: true } });
     expect(customers.length).toBeGreaterThanOrEqual(3);
 
-    const acme = customers.find((c) => c.name === 'Acme Industries');
+    type CustomerWithTier = typeof customers[number];
+    const acme = customers.find((c: CustomerWithTier) => c.name === 'Acme Industries');
     expect(acme).toBeDefined();
     expect(acme?.tier.code).toBe('GOLD');
     expect(acme?.tier.maxOverallDiscount).toBe(15.0);
@@ -50,8 +51,9 @@ describe('Phase 1 Foundation Test Suite', () => {
     expect(products.length).toBeGreaterThanOrEqual(6);
 
     const users = await prisma.user.findMany();
-    expect(users.some((u) => u.role === 'SALES_REP')).toBe(true);
-    expect(users.some((u) => u.role === 'SALES_MANAGER')).toBe(true);
+    type UserRecord = typeof users[number];
+    expect(users.some((u: UserRecord) => u.role === 'SALES_REP')).toBe(true);
+    expect(users.some((u: UserRecord) => u.role === 'SALES_MANAGER')).toBe(true);
   });
 
   it('3. Payload validation middleware rejects invalid payloads with HTTP 400', async () => {
