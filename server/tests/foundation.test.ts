@@ -5,9 +5,12 @@ import { prisma } from '../src/db/client.js';
 import { z } from 'zod';
 import { validatePayload } from '../src/middleware/validatePayload.js';
 import { authMiddleware } from '../src/middleware/authMiddleware.js';
-import type { Customer, CustomerTier, User } from '@prisma/client';
 
-type CustomerWithTier = Customer & { tier: CustomerTier };
+type CustomersWithTier = Awaited<ReturnType<typeof prisma.customer.findMany<{ include: { tier: true } }>>>;
+type CustomerWithTier = CustomersWithTier[number];
+
+type UsersList = Awaited<ReturnType<typeof prisma.user.findMany>>;
+type UserRecord = UsersList[number];
 
 // Setup test route for middleware testing
 const dummySchema = z.object({
@@ -41,7 +44,7 @@ describe('Phase 1 Foundation Test Suite', () => {
   });
 
   it('2. Database seed contains expected Master Data (Customers, Products, Users, Policies)', async () => {
-    const customers: CustomerWithTier[] = await prisma.customer.findMany({ include: { tier: true } });
+    const customers: CustomersWithTier = await prisma.customer.findMany({ include: { tier: true } });
     expect(customers.length).toBeGreaterThanOrEqual(3);
 
     const acme = customers.find((c: CustomerWithTier) => c.name === 'Acme Industries');
@@ -52,9 +55,9 @@ describe('Phase 1 Foundation Test Suite', () => {
     const products = await prisma.product.findMany({ include: { category: true } });
     expect(products.length).toBeGreaterThanOrEqual(6);
 
-    const users: User[] = await prisma.user.findMany();
-    expect(users.some((u: User) => u.role === 'SALES_REP')).toBe(true);
-    expect(users.some((u: User) => u.role === 'SALES_MANAGER')).toBe(true);
+    const users: UsersList = await prisma.user.findMany();
+    expect(users.some((u: UserRecord) => u.role === 'SALES_REP')).toBe(true);
+    expect(users.some((u: UserRecord) => u.role === 'SALES_MANAGER')).toBe(true);
   });
 
   it('3. Payload validation middleware rejects invalid payloads with HTTP 400', async () => {
