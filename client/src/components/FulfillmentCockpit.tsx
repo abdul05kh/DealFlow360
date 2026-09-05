@@ -46,6 +46,15 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
     allocateFulfillment,
   } = useFulfillmentGovernance(activeQuote);
 
+  const actionBarRef = React.useRef<HTMLDivElement>(null);
+
+  // Smooth scroll into view when allocation error occurs
+  React.useEffect(() => {
+    if (allocationError && actionBarRef.current) {
+      actionBarRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [allocationError]);
+
   const isSalesRep = currentRole === 'SALES_REP';
   const isOperationsOrManager = currentRole === 'OPERATIONS_MANAGER' || currentRole === 'SALES_MANAGER';
 
@@ -212,23 +221,13 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
         </div>
       </div>
 
-      {/* 2. Global Error Alerts */}
+      {/* 2. Evaluation Warning Alert */}
       {evaluationError && (
         <div className="bg-red-950/40 border border-red-800/60 p-4 rounded-xl flex items-center gap-3 text-red-200 text-sm">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
           <div>
             <div className="font-bold">Fulfillment Evaluation Failed</div>
             <div className="text-xs text-red-300">{evaluationError}</div>
-          </div>
-        </div>
-      )}
-
-      {allocationError && (
-        <div className="bg-amber-950/40 border border-amber-800/60 p-4 rounded-xl flex items-center gap-3 text-amber-200 text-sm">
-          <XCircle className="w-5 h-5 text-amber-400 shrink-0" />
-          <div>
-            <div className="font-bold">Allocation Transaction Error</div>
-            <div className="text-xs text-amber-300">{allocationError}</div>
           </div>
         </div>
       )}
@@ -278,7 +277,7 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
       />
 
       {/* 6. Operations Action Bar (Commit Allocation) */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+      <div ref={actionBarRef} className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span>Active Persona:</span>
@@ -297,6 +296,21 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
             </span>
           )}
         </div>
+
+        {/* Action Error Alert rendered directly inside Action Bar above button */}
+        {allocationError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="bg-amber-950/80 border-2 border-amber-600/80 p-4 rounded-xl flex items-start gap-3 text-amber-200 text-sm shadow-xl shadow-amber-950/40"
+          >
+            <XCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-amber-100">Allocation Transaction Conflict</div>
+              <div className="text-xs text-amber-300 mt-0.5">{allocationError}</div>
+            </div>
+          </div>
+        )}
 
         {isSalesRep ? (
           <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between text-xs text-slate-300">
