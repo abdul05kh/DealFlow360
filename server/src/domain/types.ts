@@ -181,3 +181,11 @@ export class InvalidStateTransitionError extends Error {
     this.name = 'InvalidStateTransitionError';
   }
 }
+
+export class NotFoundError extends Error {
+  constructor(entityName: string, id: string) {
+    super(`${entityName} not found with ID: ${id}`);
+    this.name = 'NotFoundError';
+  }
+}
+

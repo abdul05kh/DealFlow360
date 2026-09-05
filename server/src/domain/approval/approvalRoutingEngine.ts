@@ -46,7 +46,16 @@ export class ApprovalRoutingEngine {
     const actorRole = options?.actorRole;
 
     // 1. Same state transition
-    if (currentStatus === targetStatus) return;
+    if (currentStatus === targetStatus) {
+      if (currentStatus === 'APPROVED' || currentStatus === 'REJECTED' || currentStatus === 'AUTO_APPROVED') {
+        throw new InvalidStateTransitionError(
+          currentStatus,
+          targetStatus,
+          `Quote is already in status ${currentStatus}.`
+        );
+      }
+      return;
+    }
 
     // 2. DRAFT / EVALUATED state transitions
     if (currentStatus === 'DRAFT' || currentStatus === 'EVALUATED') {
