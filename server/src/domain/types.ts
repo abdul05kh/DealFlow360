@@ -113,6 +113,16 @@ export interface FinancialSummary {
   marginPercentage: number; // Round to 2 decimal places
 }
 
+export interface MarginRealizationResult {
+  netRevenue: number;
+  estimatedCost: number;
+  realizedMarginPercent: number;
+  baseTargetMarginPercent: number;
+  volumeFactorPercent: number;
+  requiredTargetMarginPercent: number;
+  marginRealizationPercent: number;
+}
+
 // 4. Governance & Risk Evaluation Output DTOs
 export interface TriggeredRule {
   ruleCode: string;
