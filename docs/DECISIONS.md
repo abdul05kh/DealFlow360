@@ -70,3 +70,21 @@ The solution must provide deterministic, explainable, server-calculated governan
 | **Validation** | Zod | Runtime payload safety at API layer |
 | **Testing** | Vitest + Supertest | Blazing fast unit & integration tests |
 | **Architecture** | Input → Validate → Domain → Governance → Persist → Audit | No client-side trust, complete backend control |
+
+---
+
+## ADR-002: Financial Representation (Minor Integer Units) & Pure Domain Engines
+
+### Status
+**LOCKED & IMPLEMENTED** (Phase 2 / Flow A Increment 1)
+
+### Context & Decisions
+1. **Financial Arithmetic via Minor Integer Units**:
+   - Floating point arithmetic drift is eliminated by converting major currency values to integer minor units internally (`Math.round(val * 100)`).
+   - Line gross, discount amounts, net revenue, estimated cost, and gross margin are computed using minor unit integer arithmetic.
+   - Conversion back to 2-decimal major units (`minorVal / 100`) occurs only at the domain boundary output.
+2. **Pure Domain Engine Decoupling**:
+   - `MarginCalculator`, `DiscountGovernance`, `DealRiskEngine`, `ApprovalRoutingEngine`, and `RecommendationEngine` have zero imports or runtime dependencies on Prisma, Express, or React.
+3. **Configuration-Driven Recommendations**:
+   - Cross-sell rule evaluation uses `CrossSellRule.minMarginPercent` directly from database configuration rather than hardcoding global threshold constants.
+
