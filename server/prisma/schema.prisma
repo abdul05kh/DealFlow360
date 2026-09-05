@@ -37,17 +37,19 @@ model ProductCategory {
 }
 
 model Product {
-  id               String          @id @default(uuid())
-  sku              String          @unique
+  id               String            @id @default(uuid())
+  sku              String            @unique
   name             String
   categoryId       String
-  category         ProductCategory @relation(fields: [categoryId], references: [id])
+  category         ProductCategory   @relation(fields: [categoryId], references: [id])
   costPrice        Float
   sellingPrice     Float
-  isActive         Boolean         @default(true)
+  isActive         Boolean           @default(true)
   quoteLines       QuoteLine[]
-  triggerRules     CrossSellRule[] @relation("TriggerProduct")
-  recommendedRules CrossSellRule[] @relation("RecommendedProduct")
+  triggerRules     CrossSellRule[]   @relation("TriggerProduct")
+  recommendedRules CrossSellRule[]   @relation("RecommendedProduct")
+  inventoryStocks  InventoryStock[]
+  fulfillmentItems FulfillmentItem[]
 }
 
 model User {
@@ -102,14 +104,15 @@ model Quote {
   updatedAt            DateTime          @updatedAt
   lines                QuoteLine[]
   approvalRequests     ApprovalRequest[]
+  fulfillmentPlan      FulfillmentPlan?
 }
 
 model QuoteLine {
-  id              String  @id @default(uuid())
+  id              String            @id @default(uuid())
   quoteId         String
-  quote           Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote           Quote             @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   productId       String
-  product         Product @relation(fields: [productId], references: [id])
+  product         Product           @relation(fields: [productId], references: [id])
   quantity        Int
   unitPrice       Float
   unitCost        Float
@@ -119,6 +122,7 @@ model QuoteLine {
   netTotal        Float
   lineCost        Float
   lineMargin      Float
+  fulfillmentItems FulfillmentItem[]
 }
 
 model ApprovalRequest {
@@ -157,4 +161,55 @@ model CrossSellRule {
   recommendedProduct   Product @relation("RecommendedProduct", fields: [recommendedProductId], references: [id])
   reasonTemplate       String
   minMarginPercent     Float   @default(30.0)
+}
+
+model Warehouse {
+  id               String            @id @default(uuid())
+  code             String            @unique
+  name             String
+  location         String
+  baseShippingCost Float             @default(500.0)
+  priority         Int               @default(1)
+  stocks           InventoryStock[]
+  fulfillmentItems FulfillmentItem[]
+}
+
+model InventoryStock {
+  id               String    @id @default(uuid())
+  warehouseId      String
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantityOnHand   Int
+  quantityReserved Int       @default(0)
+
+  @@unique([warehouseId, productId])
+}
+
+model FulfillmentPlan {
+  id                   String            @id @default(uuid())
+  quoteId              String            @unique
+  quote                Quote             @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  status               String            // 'ALLOCATED' | 'PARTIALLY_FULFILLED_BACKORDER' | 'OVERRIDDEN'
+  totalShipments       Int
+  totalFulfillmentCost Float
+  backorderCount       Int               @default(0)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  items                FulfillmentItem[]
+}
+
+model FulfillmentItem {
+  id                String          @id @default(uuid())
+  planId            String
+  plan              FulfillmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  quoteLineId       String
+  quoteLine         QuoteLine       @relation(fields: [quoteLineId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id])
+  warehouseId       String?
+  warehouse         Warehouse?      @relation(fields: [warehouseId], references: [id])
+  allocatedQuantity Int
+  status            String          // 'FULFILLED' | 'BACKORDERED'
+  shippingCost      Float           @default(0.0)
 }
