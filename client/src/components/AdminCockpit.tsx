@@ -10,8 +10,13 @@ import {
   Award,
   Tags,
   RefreshCw,
+  FileText,
+  Download,
+  Calendar,
+  Filter,
 } from 'lucide-react';
 import { apiClient } from '../services/api';
+import { exportToXLSX, exportToPDF } from '../utils/exportUtils';
 import { OperatorAdminCard } from './Admin/OperatorAdminCard';
 import {
   CustomerDTO,
@@ -30,12 +35,17 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
   currentRole,
   onMasterDataChanged,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'operators' | 'products' | 'tiers' | 'customers' | 'categories'>('operators');
+  const [activeSubTab, setActiveSubTab] = useState<'operators' | 'products' | 'tiers' | 'customers' | 'categories' | 'reports'>('operators');
   
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [tiers, setTiers] = useState<CustomerTierDTO[]>([]);
   const [customers, setCustomers] = useState<CustomerDTO[]>([]);
   const [categories, setCategories] = useState<ProductCategoryDTO[]>([]);
+
+  // Reporting Filters State
+  const [reportCategoryFilter, setReportCategoryFilter] = useState<string>('ALL');
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>('ALL');
+  const [reportSearchQuery, setReportSearchQuery] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -408,7 +418,184 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
           <Tags className="w-4 h-4" />
           5. Categories ({categories.length})
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('reports')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'reports'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          6. Operational Reports & Exports
+        </button>
       </div>
+
+      {/* Sub-Tab 6: Reports & Exports */}
+      {activeSubTab === 'reports' && (
+        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-400" />
+                <span>Operational Governance & Master Data Reporting</span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Filter master data catalog and export canonical reports in real XLSX and PDF format.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const filtered = products.filter((p) => {
+                    const matchCategory = reportCategoryFilter === 'ALL' || p.categoryId === reportCategoryFilter;
+                    const matchStatus = reportStatusFilter === 'ALL' || (reportStatusFilter === 'ACTIVE' ? p.isActive : !p.isActive);
+                    const matchSearch = !reportSearchQuery || p.name.toLowerCase().includes(reportSearchQuery.toLowerCase()) || p.sku.toLowerCase().includes(reportSearchQuery.toLowerCase());
+                    return matchCategory && matchStatus && matchSearch;
+                  });
+
+                  const exportData = filtered.map((p) => ({
+                    SKU: p.sku,
+                    Product_Name: p.name,
+                    Category: p.category.name,
+                    Selling_Price: p.sellingPrice,
+                    Cost_Price: p.costPrice,
+                    Billing_Type: p.billingType || 'ONE_TIME',
+                    Status: p.isActive ? 'ACTIVE' : 'INACTIVE',
+                  }));
+
+                  exportToXLSX(exportData, 'dealflow360_product_catalog_report');
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg active:scale-[0.99]"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export XLSX</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const filtered = products.filter((p) => {
+                    const matchCategory = reportCategoryFilter === 'ALL' || p.categoryId === reportCategoryFilter;
+                    const matchStatus = reportStatusFilter === 'ALL' || (reportStatusFilter === 'ACTIVE' ? p.isActive : !p.isActive);
+                    const matchSearch = !reportSearchQuery || p.name.toLowerCase().includes(reportSearchQuery.toLowerCase()) || p.sku.toLowerCase().includes(reportSearchQuery.toLowerCase());
+                    return matchCategory && matchStatus && matchSearch;
+                  });
+
+                  const headers = ['SKU', 'Product Name', 'Category', 'Selling Price', 'Cost Price', 'Billing Type', 'Status'];
+                  const rows = filtered.map((p) => [
+                    p.sku,
+                    p.name,
+                    p.category.name,
+                    `₹${p.sellingPrice.toLocaleString()}`,
+                    `₹${p.costPrice.toLocaleString()}`,
+                    p.billingType || 'ONE_TIME',
+                    p.isActive ? 'ACTIVE' : 'INACTIVE',
+                  ]);
+
+                  exportToPDF('Operational Product Governance Report', headers, rows, 'dealflow360_product_report');
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg active:scale-[0.99]"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Export PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reporting Filter Toolbar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-400 block mb-1">Filter by Category</label>
+              <select
+                value={reportCategoryFilter}
+                onChange={(e) => setReportCategoryFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="ALL">All Product Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name} ({cat.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-slate-400 block mb-1">Filter by Active Status</label>
+              <select
+                value={reportStatusFilter}
+                onChange={(e) => setReportStatusFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="ALL">All Statuses (Active & Inactive)</option>
+                <option value="ACTIVE">Active Only</option>
+                <option value="INACTIVE">Inactive Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-slate-400 block mb-1">Search SKU or Product Name</label>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={reportSearchQuery}
+                onChange={(e) => setReportSearchQuery(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Filtered Data Summary Table */}
+          <div className="overflow-x-auto border border-slate-800 rounded-xl">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-semibold">
+                  <th className="p-3">SKU</th>
+                  <th className="p-3">Product Name</th>
+                  <th className="p-3">Category</th>
+                  <th className="p-3 text-right">Selling Price</th>
+                  <th className="p-3 text-right">Cost Price</th>
+                  <th className="p-3 text-center">Billing Type</th>
+                  <th className="p-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                {products
+                  .filter((p) => {
+                    const matchCategory = reportCategoryFilter === 'ALL' || p.categoryId === reportCategoryFilter;
+                    const matchStatus = reportStatusFilter === 'ALL' || (reportStatusFilter === 'ACTIVE' ? p.isActive : !p.isActive);
+                    const matchSearch = !reportSearchQuery || p.name.toLowerCase().includes(reportSearchQuery.toLowerCase()) || p.sku.toLowerCase().includes(reportSearchQuery.toLowerCase());
+                    return matchCategory && matchStatus && matchSearch;
+                  })
+                  .map((prod) => (
+                    <tr key={prod.id} className="hover:bg-slate-900/40">
+                      <td className="p-3 font-mono text-purple-300">{prod.sku}</td>
+                      <td className="p-3 font-medium text-slate-100">{prod.name}</td>
+                      <td className="p-3 text-slate-400">{prod.category.name}</td>
+                      <td className="p-3 text-right font-mono text-emerald-400">₹{prod.sellingPrice.toLocaleString()}</td>
+                      <td className="p-3 text-right font-mono text-slate-400">₹{prod.costPrice.toLocaleString()}</td>
+                      <td className="p-3 text-center font-mono text-slate-400">{prod.billingType || 'ONE_TIME'}</td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] rounded font-semibold ${
+                            prod.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}
+                        >
+                          {prod.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Sub-Tab 0: Operators */}
       {activeSubTab === 'operators' && (
