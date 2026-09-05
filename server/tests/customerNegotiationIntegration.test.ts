@@ -166,8 +166,8 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
       where: { id: quoteId },
       include: { lines: true },
     });
-    const dbLine1 = dbQuote?.lines.find((l) => l.id === line1Id);
-    const dbLine2 = dbQuote?.lines.find((l) => l.id === line2Id);
+    const dbLine1 = dbQuote?.lines.find((l: any) => l.id === line1Id);
+    const dbLine2 = dbQuote?.lines.find((l: any) => l.id === line2Id);
 
     expect(dbLine1?.discountPercent).toBe(10); // Accepted counter-offer discount applied
     expect(dbLine2?.discountPercent).toBe(8); // Untouched preserved original discount
