@@ -3,7 +3,34 @@
  * Matches server domain types and API response payloads.
  */
 
-export type DemoRole = 'SALES_REP' | 'SALES_MANAGER' | 'OPERATIONS_MANAGER';
+export type RealUserRole = 'SALES_REP' | 'SALES_MANAGER' | 'OPERATIONS_MANAGER' | 'ADMIN' | 'CUSTOMER';
+export type DemoRole = RealUserRole;
+
+export interface AuthUserDTO {
+  id: string;
+  name: string;
+  email: string;
+  role: RealUserRole;
+  customerId?: string | null;
+}
+
+export interface AuthResponseDTO {
+  user: AuthUserDTO;
+  token: string;
+}
+
+export interface LoginPayloadDTO {
+  email: string;
+  password: string;
+}
+
+export interface SignupPayloadDTO {
+  name: string;
+  email: string;
+  password: string;
+  role?: RealUserRole;
+  customerId?: string;
+}
 
 export interface CustomerTierDTO {
   id: string;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../services/api';
 import {
+  AuthUserDTO,
   CustomerDTO,
   DemoRole,
   FullQuoteEvaluationDTO,
@@ -11,6 +12,8 @@ import {
 
 export function useQuoteGovernance() {
   const [currentRole, setCurrentRole] = useState<DemoRole>('SALES_REP');
+  const [authUser, setAuthUser] = useState<AuthUserDTO | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [customers, setCustomers] = useState<CustomerDTO[]>([]);
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
@@ -33,8 +36,36 @@ export function useQuoteGovernance() {
   // Sync API identity when role changes
   const handleRoleChange = (newRole: DemoRole) => {
     setCurrentRole(newRole);
-    apiClient.setIdentity(newRole);
+    if (!authUser) {
+      apiClient.setIdentity(newRole);
+    }
   };
+
+  const handleAuthSuccess = (user: AuthUserDTO) => {
+    setAuthUser(user);
+    setCurrentRole(user.role);
+  };
+
+  const handleLogout = () => {
+    apiClient.logout();
+    setAuthUser(null);
+    setCurrentRole('SALES_REP');
+    apiClient.setIdentity('SALES_REP');
+  };
+
+  // Check stored JWT session on mount
+  useEffect(() => {
+    async function checkAuthSession() {
+      if (apiClient.getToken()) {
+        const user = await apiClient.getCurrentUser();
+        if (user) {
+          setAuthUser(user);
+          setCurrentRole(user.role);
+        }
+      }
+    }
+    checkAuthSession();
+  }, []);
 
   // Load initial master data
   useEffect(() => {
@@ -223,6 +254,11 @@ export function useQuoteGovernance() {
   return {
     currentRole,
     setRole: handleRoleChange,
+    authUser,
+    isAuthModalOpen,
+    setIsAuthModalOpen,
+    handleAuthSuccess,
+    handleLogout,
     customers,
     products,
     selectedCustomerId,

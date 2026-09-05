@@ -9,6 +9,7 @@ import {
   AuditTrailDrawer,
   QuickDemoPresetBar,
   FulfillmentCockpit,
+  LoginModal,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
 import {
@@ -27,6 +28,11 @@ export default function App() {
   const {
     currentRole,
     setRole,
+    authUser,
+    isAuthModalOpen,
+    setIsAuthModalOpen,
+    handleAuthSuccess,
+    handleLogout,
     customers,
     products,
     selectedCustomerId,
@@ -79,13 +85,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
-      {/* 1. Header with View Tabs & Persona Switcher */}
+      {/* 1. Header with View Tabs, Persona Switcher & Real JWT Auth Modal */}
       <Header
         currentRole={currentRole}
         onRoleChange={setRole}
         apiConnected={apiConnected}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        authUser={authUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+      />
+
+      <LoginModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        currentUser={authUser}
+        onLogout={handleLogout}
       />
 
       {/* 2. Main Content Container */}

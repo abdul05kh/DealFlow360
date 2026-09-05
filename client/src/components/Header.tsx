@@ -1,6 +1,6 @@
 import React from 'react';
-import { Shield, UserCheck, ShieldAlert, Cpu, Truck } from 'lucide-react';
-import { DemoRole } from '../types/api';
+import { Shield, UserCheck, ShieldAlert, Cpu, Truck, KeyRound, CheckCircle2 } from 'lucide-react';
+import { AuthUserDTO, DemoRole } from '../types/api';
 
 interface HeaderProps {
   currentRole: DemoRole;
@@ -8,6 +8,8 @@ interface HeaderProps {
   apiConnected: boolean;
   activeTab?: 'governance' | 'fulfillment';
   onTabChange?: (tab: 'governance' | 'fulfillment') => void;
+  authUser?: AuthUserDTO | null;
+  onOpenAuthModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   apiConnected,
   activeTab = 'governance',
   onTabChange,
+  authUser,
+  onOpenAuthModal,
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-30 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
@@ -80,6 +84,33 @@ export const Header: React.FC<HeaderProps> = ({
             {apiConnected ? 'Connected (Authoritative)' : 'Connecting...'}
           </span>
         </div>
+
+        {/* Real JWT Auth Button */}
+        {onOpenAuthModal && (
+          <button
+            type="button"
+            onClick={onOpenAuthModal}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+              authUser
+                ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80 shadow-md shadow-emerald-950/40'
+                : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white border-indigo-400/30 shadow-md shadow-indigo-950/40'
+            }`}
+          >
+            {authUser ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>
+                  JWT Active: <span className="text-white">{authUser.name}</span> ({authUser.role})
+                </span>
+              </>
+            ) : (
+              <>
+                <KeyRound className="w-4 h-4" />
+                <span>Real JWT Sign In</span>
+              </>
+            )}
+          </button>
+        )}
 
         {/* Persona Switcher */}
         <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">

@@ -1,14 +1,18 @@
 import {
   APIErrorResponse,
+  AuthResponseDTO,
+  AuthUserDTO,
   CustomerDTO,
   DemoRole,
   EvaluateQuotePayloadDTO,
   FullQuoteEvaluationDTO,
   FulfillmentEvaluationResponseDTO,
   FulfillmentPlanDTO,
+  LoginPayloadDTO,
   ManualOverrideItemDTO,
   ProductDTO,
   SavedQuoteDTO,
+  SignupPayloadDTO,
   WarehouseDTO,
 } from '../types/api';
 
@@ -17,6 +21,8 @@ const API_BASE = '/api/v1';
 export class APIClient {
   private role: DemoRole = 'SALES_REP';
   private userId: string = 'rep_1';
+  private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('df360_token') : null;
+  private currentUser: AuthUserDTO | null = null;
 
   setIdentity(role: DemoRole, userId?: string) {
     this.role = role;
@@ -30,15 +36,88 @@ export class APIClient {
   }
 
   getIdentity(): { role: DemoRole; userId: string } {
+    if (this.currentUser) {
+      return { role: this.currentUser.role, userId: this.currentUser.id };
+    }
     return { role: this.role, userId: this.userId };
   }
 
+  getCurrentAuthUser(): AuthUserDTO | null {
+    return this.currentUser;
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('df360_token', token);
+      } else {
+        localStorage.removeItem('df360_token');
+      }
+    }
+  }
+
   private getHeaders(): Record<string, string> {
-    return {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Demo-Role': this.role,
-      'X-Demo-User-Id': this.userId,
+      'X-Demo-Role': this.currentUser ? this.currentUser.role : this.role,
+      'X-Demo-User-Id': this.currentUser ? this.currentUser.id : this.userId,
     };
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    return headers;
+  }
+
+  async login(payload: LoginPayloadDTO): Promise<AuthResponseDTO> {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await this.handleResponse<AuthResponseDTO>(res);
+    this.setToken(data.token);
+    this.currentUser = data.user;
+    this.setIdentity(data.user.role, data.user.id);
+    return data;
+  }
+
+  async signup(payload: SignupPayloadDTO): Promise<AuthResponseDTO> {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await this.handleResponse<AuthResponseDTO>(res);
+    this.setToken(data.token);
+    this.currentUser = data.user;
+    this.setIdentity(data.user.role, data.user.id);
+    return data;
+  }
+
+  async getCurrentUser(): Promise<AuthUserDTO | null> {
+    if (!this.token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: this.getHeaders(),
+      });
+      const data = await this.handleResponse<{ user: AuthUserDTO }>(res);
+      this.currentUser = data.user;
+      this.setIdentity(data.user.role, data.user.id);
+      return data.user;
+    } catch {
+      this.logout();
+      return null;
+    }
+  }
+
+  logout() {
+    this.setToken(null);
+    this.currentUser = null;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
