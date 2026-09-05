@@ -14,6 +14,7 @@ import {
   CustomerPortalView,
   LoginView,
   CustomerRequestsQueue,
+  ManagerApprovalQueue,
   HybridBillingCard,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
@@ -64,7 +65,7 @@ export default function App() {
     refreshMasterData,
   } = useQuoteGovernance();
 
-  const [activeTab, setActiveTab] = useState<'governance' | 'requests' | 'fulfillment' | 'admin' | 'customer'>('governance');
+  const [activeTab, setActiveTab] = useState<'governance' | 'approvals' | 'requests' | 'fulfillment' | 'admin' | 'customer'>('governance');
   const [approvalReason, setApprovalReason] = useState<string>('');
 
   useEffect(() => {
@@ -417,6 +418,8 @@ export default function App() {
               <AuditTrailDrawer savedQuote={savedQuote} />
             </div>
           </div>
+        ) : activeTab === 'approvals' ? (
+          <ManagerApprovalQueue currentRole={currentRole} />
         ) : activeTab === 'requests' ? (
           <CustomerRequestsQueue currentRole={currentRole} />
         ) : activeTab === 'fulfillment' ? (

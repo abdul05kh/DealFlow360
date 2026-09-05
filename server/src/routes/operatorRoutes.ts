@@ -99,3 +99,87 @@ operatorRouter.get(
     }
   }
 );
+
+/**
+ * GET /api/v1/operator/approval-requests
+ * Retrieves pending manager approval requests for initial Sales Rep quotes.
+ * Strictly restricted to SALES_MANAGER and ADMIN roles.
+ */
+operatorRouter.get(
+  '/operator/approval-requests',
+  authMiddleware(['SALES_MANAGER', 'ADMIN']),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const approvalRequests = await prisma.approvalRequest.findMany({
+        where: {
+          status: 'PENDING',
+          quote: {
+            status: 'PENDING_APPROVAL',
+          },
+        },
+        include: {
+          quote: {
+            include: {
+              customer: { include: { tier: true } },
+              salesRep: true,
+              lines: { include: { product: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const queueItems = approvalRequests.map((ar: any) => {
+        let riskReasons: string[] = [];
+        if (ar.quote.riskReasonsJson) {
+          try {
+            riskReasons = JSON.parse(ar.quote.riskReasonsJson);
+          } catch {
+            riskReasons = [];
+          }
+        }
+
+        return {
+          id: ar.id,
+          quoteId: ar.quoteId,
+          quoteNumber: ar.quote.quoteNumber,
+          quoteStatus: ar.quote.status,
+          customerId: ar.quote.customerId,
+          customerName: ar.quote.customer?.name || 'Unknown Customer',
+          customerTier: ar.quote.customer?.tier?.name || 'STANDARD',
+          tierDiscountCeiling: ar.quote.customer?.tier?.maxDiscountPercent || 0,
+          salesRepId: ar.quote.salesRepId,
+          salesRepName: ar.quote.salesRep?.name || 'Sales Rep',
+          requiredRole: ar.requiredRole,
+          createdAt: ar.createdAt,
+          financials: {
+            grossRevenue: ar.quote.grossRevenue,
+            discountAmount: ar.quote.discountAmount,
+            netRevenue: ar.quote.netRevenue,
+            riskLevel: ar.quote.riskLevel,
+            riskScore: ar.quote.riskScore,
+          },
+          riskReasons,
+          lines: ar.quote.lines.map((l: any) => ({
+            id: l.id,
+            productId: l.productId,
+            productName: l.product?.name || 'Product',
+            sku: l.product?.sku || 'SKU',
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            discountPercent: l.discountPercent,
+            discountAmount: l.discountAmount,
+            netTotal: l.netTotal,
+          })),
+        };
+      });
+
+      res.status(200).json(queueItems);
+    } catch (error: any) {
+      res.status(500).json({
+        error: 'InternalServerError',
+        message: 'Failed to retrieve manager approval requests work queue.',
+      });
+    }
+  }
+);

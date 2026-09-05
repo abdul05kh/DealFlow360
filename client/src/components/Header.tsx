@@ -6,8 +6,8 @@ interface HeaderProps {
   currentRole: DemoRole;
   onRoleChange: (role: DemoRole) => void;
   apiConnected: boolean;
-  activeTab?: 'governance' | 'requests' | 'fulfillment' | 'admin' | 'customer';
-  onTabChange?: (tab: 'governance' | 'requests' | 'fulfillment' | 'admin' | 'customer') => void;
+  activeTab?: 'governance' | 'approvals' | 'requests' | 'fulfillment' | 'admin' | 'customer';
+  onTabChange?: (tab: 'governance' | 'approvals' | 'requests' | 'fulfillment' | 'admin' | 'customer') => void;
   authUser?: AuthUserDTO | null;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
@@ -63,6 +63,18 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => onTabChange('approvals')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
+                activeTab === 'approvals'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              2. Manager Approvals
+            </button>
+            <button
+              type="button"
               onClick={() => onTabChange('requests')}
               className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
                 activeTab === 'requests'
@@ -71,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              2. Customer Requests
+              3. Customer Requests
             </button>
             <button
               type="button"
@@ -82,18 +94,18 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              3. Fulfillment Cockpit
+              4. Fulfillment Cockpit
             </button>
             <button
               type="button"
               onClick={() => onTabChange('admin')}
               className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
                 activeTab === 'admin'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-amber-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              4. Master Data & Admin
+              5. Master Data & Admin
             </button>
           </div>
         )}

@@ -416,4 +416,57 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
     expect(queueResAfter.status).toBe(200);
     expect(queueResAfter.body.some((r: any) => r.id === negId)).toBe(false);
   });
+
+  // 9. Persistent Manager Approval Queue Endpoint Test
+  it('9. GET /api/v1/operator/approval-requests returns pending manager approval requests for high-discount quotes', async () => {
+    // Sales Rep creates quote requiring approval (20% discount on Gold tier)
+    const createRes = await request(app)
+      .post('/api/v1/quotes')
+      .set('Authorization', `Bearer ${repToken}`)
+      .send({
+        customerId: 'cust_acme_101',
+        items: [{ productId: 'prod_server_01', quantity: 1, discountPercent: 20 }],
+      });
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.status).toBe('PENDING_APPROVAL');
+    const quoteId = createRes.body.id;
+
+    // SALES_REP cannot access manager approval queue -> 403
+    const repQueueRes = await request(app)
+      .get('/api/v1/operator/approval-requests')
+      .set('Authorization', `Bearer ${repToken}`);
+    expect(repQueueRes.status).toBe(403);
+
+    // CUSTOMER cannot access manager approval queue -> 403
+    const custQueueRes = await request(app)
+      .get('/api/v1/operator/approval-requests')
+      .set('Authorization', `Bearer ${customerAToken}`);
+    expect(custQueueRes.status).toBe(403);
+
+    // SALES_MANAGER can fetch manager approval queue -> 200
+    const mgrQueueRes = await request(app)
+      .get('/api/v1/operator/approval-requests')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(mgrQueueRes.status).toBe(200);
+    expect(Array.isArray(mgrQueueRes.body)).toBe(true);
+    const foundItem = mgrQueueRes.body.find((item: any) => item.quoteId === quoteId);
+    expect(foundItem).toBeDefined();
+    expect(foundItem.quoteNumber).toBe(createRes.body.quoteNumber);
+    expect(foundItem.customerName).toBe('Acme Industries');
+
+    // Manager approves deal -> 200
+    const approveRes = await request(app)
+      .post(`/api/v1/quotes/${quoteId}/approve`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ reason: 'Approved under manager approval queue test' });
+    expect(approveRes.status).toBe(200);
+    expect(approveRes.body.status).toBe('APPROVED');
+
+    // Manager approval queue refreshed -> approved quote no longer in pending queue
+    const mgrQueueAfter = await request(app)
+      .get('/api/v1/operator/approval-requests')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(mgrQueueAfter.status).toBe(200);
+    expect(mgrQueueAfter.body.some((item: any) => item.quoteId === quoteId)).toBe(false);
+  });
 });

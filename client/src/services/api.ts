@@ -21,6 +21,7 @@ import {
   InvoiceDTO,
   LoginPayloadDTO,
   ManualOverrideItemDTO,
+  ManagerApprovalRequestDTO,
   OperatorCustomerRequestDTO,
   OperatorDTO,
   ProductCategoryDTO,
@@ -480,6 +481,15 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<OperatorCustomerRequestDTO[]>(res);
+  }
+
+  /** Manager Approval Requests Work Queue */
+
+  async getManagerApprovalRequests(): Promise<ManagerApprovalRequestDTO[]> {
+    const res = await fetch(`${API_BASE}/operator/approval-requests`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<ManagerApprovalRequestDTO[]>(res);
   }
 
   /** Increment 4 — Hybrid Billing Endpoints */
