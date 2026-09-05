@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import { approvalRoutingEngine } from '../domain/approval/approvalRoutingEngine';
 import { discountGovernance } from '../domain/governance/discountGovernance';
@@ -100,7 +101,7 @@ export class QuoteService {
 
     const quoteNumber = `QT-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Create Quote record
       const quote = await tx.quote.create({
         data: {
@@ -206,7 +207,7 @@ export class QuoteService {
       { actorRole: approverRole }
     );
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Update Quote
       const updatedQuote = await tx.quote.update({
         where: { id: quoteId },
@@ -219,7 +220,7 @@ export class QuoteService {
       });
 
       // 2. Update pending ApprovalRequest if one exists
-      const pendingReq = existingQuote.approvalRequests.find((r) => r.status === 'PENDING');
+      const pendingReq = existingQuote.approvalRequests.find((r: { status: string }) => r.status === 'PENDING');
       if (pendingReq) {
         await tx.approvalRequest.update({
           where: { id: pendingReq.id },
@@ -276,7 +277,7 @@ export class QuoteService {
       { actorRole: approverRole }
     );
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Update Quote
       const updatedQuote = await tx.quote.update({
         where: { id: quoteId },
@@ -289,7 +290,7 @@ export class QuoteService {
       });
 
       // 2. Update pending ApprovalRequest if one exists
-      const pendingReq = existingQuote.approvalRequests.find((r) => r.status === 'PENDING');
+      const pendingReq = existingQuote.approvalRequests.find((r: { status: string }) => r.status === 'PENDING');
       if (pendingReq) {
         await tx.approvalRequest.update({
           where: { id: pendingReq.id },
