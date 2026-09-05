@@ -1,5 +1,8 @@
-let firebaseAdminApp: any = null;
-let firebaseAdminModule: any = null;
+import { initializeApp, cert, getApps, getApp, App } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+
+let firebaseAdminApp: App | null = null;
+let firebaseAuth: Auth | null = null;
 
 // Dynamically load Firebase Admin SDK if available and service account credentials are provided
 if (
@@ -8,14 +11,14 @@ if (
   process.env.FIREBASE_PRIVATE_KEY
 ) {
   try {
-    firebaseAdminModule = require('firebase-admin');
-    firebaseAdminApp = firebaseAdminModule.initializeApp({
-      credential: firebaseAdminModule.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
+    const credential = cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     });
+
+    firebaseAdminApp = getApps().length > 0 ? getApp() : initializeApp({ credential });
+    firebaseAuth = getAuth(firebaseAdminApp);
     console.log('Firebase Admin SDK initialized successfully.');
   } catch (err) {
     console.warn('Firebase Admin SDK initialization skipped or failed:', err);
@@ -23,7 +26,7 @@ if (
 }
 
 export function isFirebaseAdminConfigured(): boolean {
-  return !!(firebaseAdminApp && firebaseAdminModule);
+  return !!(firebaseAdminApp && firebaseAuth);
 }
 
 export interface DecodedFirebaseIdentity {
@@ -36,9 +39,9 @@ export interface DecodedFirebaseIdentity {
  * Fallback helper for local dev/test boundaries when live Firebase Admin config is absent.
  */
 export async function verifyFirebaseToken(idToken: string): Promise<DecodedFirebaseIdentity> {
-  if (firebaseAdminApp && firebaseAdminModule) {
+  if (firebaseAuth) {
     try {
-      const decodedToken = await firebaseAdminModule.auth(firebaseAdminApp).verifyIdToken(idToken);
+      const decodedToken = await firebaseAuth.verifyIdToken(idToken);
       return {
         uid: decodedToken.uid,
         email: decodedToken.email,
@@ -64,11 +67,11 @@ export async function createFirebaseUserAdmin(params: {
   password?: string;
   displayName?: string;
 }): Promise<string | null> {
-  if (!isFirebaseAdminConfigured()) {
+  if (!firebaseAuth) {
     return null;
   }
   try {
-    const userRecord = await firebaseAdminModule.auth(firebaseAdminApp).createUser({
+    const userRecord = await firebaseAuth.createUser({
       email: params.email,
       password: params.password || 'Password123!',
       displayName: params.displayName,
@@ -84,11 +87,11 @@ export async function createFirebaseUserAdmin(params: {
  * Updates disabled status for a Firebase identity via Firebase Admin SDK if configured.
  */
 export async function setFirebaseUserDisabledAdmin(uid: string, disabled: boolean): Promise<boolean> {
-  if (!isFirebaseAdminConfigured() || !uid) {
+  if (!firebaseAuth || !uid) {
     return false;
   }
   try {
-    await firebaseAdminModule.auth(firebaseAdminApp).updateUser(uid, { disabled });
+    await firebaseAuth.updateUser(uid, { disabled });
     return true;
   } catch (err: any) {
     console.warn(`Firebase Admin updateUser disabled=${disabled} failed for uid ${uid}:`, err.message);
@@ -100,11 +103,11 @@ export async function setFirebaseUserDisabledAdmin(uid: string, disabled: boolea
  * Deletes a Firebase identity via Firebase Admin SDK (compensating transaction).
  */
 export async function deleteFirebaseUserAdmin(uid: string): Promise<boolean> {
-  if (!isFirebaseAdminConfigured() || !uid) {
+  if (!firebaseAuth || !uid) {
     return false;
   }
   try {
-    await firebaseAdminModule.auth(firebaseAdminApp).deleteUser(uid);
+    await firebaseAuth.deleteUser(uid);
     return true;
   } catch (err: any) {
     console.warn(`Firebase Admin deleteUser failed for uid ${uid}:`, err.message);
