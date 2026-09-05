@@ -1,4 +1,12 @@
-import type { Prisma } from '@prisma/client';
+import type {
+  ApprovalRule,
+  CrossSellRule,
+  Customer,
+  CustomerTier,
+  DiscountPolicy,
+  Product,
+  ProductCategory,
+} from '@prisma/client';
 import { prisma } from '../db/client';
 import {
   ApprovalRuleDomain,
@@ -11,11 +19,8 @@ import {
   UserDomain,
 } from '../domain/types';
 
-type CustomerWithTier = Prisma.CustomerGetPayload<{ include: { tier: true } }>;
-type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
-type DiscountPolicyPayload = Prisma.DiscountPolicyGetPayload<{}>;
-type ApprovalRulePayload = Prisma.ApprovalRuleGetPayload<{}>;
-type CrossSellRulePayload = Prisma.CrossSellRuleGetPayload<{}>;
+type CustomerWithTier = Customer & { tier: CustomerTier };
+type ProductWithCategory = Product & { category: ProductCategory };
 
 export class MasterDataService {
   /**
@@ -164,7 +169,7 @@ export class MasterDataService {
    */
   async getAllDiscountPolicies(): Promise<DiscountPolicyDomain[]> {
     const policies = await prisma.discountPolicy.findMany();
-    return policies.map((p: DiscountPolicyPayload) => ({
+    return policies.map((p: DiscountPolicy) => ({
       id: p.id,
       name: p.name,
       tierId: p.tierId,
@@ -180,7 +185,7 @@ export class MasterDataService {
    */
   async getAllApprovalRules(): Promise<ApprovalRuleDomain[]> {
     const rules = await prisma.approvalRule.findMany();
-    return rules.map((r: ApprovalRulePayload) => ({
+    return rules.map((r: ApprovalRule) => ({
       id: r.id,
       name: r.name,
       minRiskLevel: r.minRiskLevel as 'LOW' | 'MEDIUM' | 'HIGH',
@@ -194,7 +199,7 @@ export class MasterDataService {
    */
   async getCrossSellRules(): Promise<CrossSellRuleDomain[]> {
     const rules = await prisma.crossSellRule.findMany();
-    return rules.map((r: CrossSellRulePayload) => ({
+    return rules.map((r: CrossSellRule) => ({
       id: r.id,
       triggerProductId: r.triggerProductId,
       recommendedProductId: r.recommendedProductId,
