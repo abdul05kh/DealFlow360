@@ -7,10 +7,14 @@ async function main() {
 
   // 1. Clean existing records
   await prisma.auditEvent.deleteMany();
+  await prisma.fulfillmentItem.deleteMany();
+  await prisma.fulfillmentPlan.deleteMany();
   await prisma.approvalRequest.deleteMany();
   await prisma.quoteLine.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.crossSellRule.deleteMany();
+  await prisma.inventoryStock.deleteMany();
+  await prisma.warehouse.deleteMany();
   await prisma.product.deleteMany();
   await prisma.productCategory.deleteMany();
   await prisma.discountPolicy.deleteMany();
@@ -264,8 +268,69 @@ async function main() {
     },
   });
 
+  // 10. Warehouses
+  const bomWarehouse = await prisma.warehouse.create({
+    data: {
+      id: 'wh_bom_01',
+      code: 'BOM-01',
+      name: 'Mumbai Central Hub',
+      location: 'Mumbai, MH',
+      baseShippingCost: 500.0,
+      priority: 1,
+    },
+  });
+
+  const delWarehouse = await prisma.warehouse.create({
+    data: {
+      id: 'wh_del_02',
+      code: 'DEL-02',
+      name: 'Delhi North Hub',
+      location: 'Delhi, NCR',
+      baseShippingCost: 750.0,
+      priority: 2,
+    },
+  });
+
+  const blrWarehouse = await prisma.warehouse.create({
+    data: {
+      id: 'wh_blr_03',
+      code: 'BLR-03',
+      name: 'Bengaluru Tech Depot',
+      location: 'Bengaluru, KA',
+      baseShippingCost: 600.0,
+      priority: 3,
+    },
+  });
+
+  // 11. Inventory Stock Levels
+  // Enterprise Server (prod_server_01): BOM-01=5, DEL-02=3, BLR-03=0 (Total=8)
+  await prisma.inventoryStock.createMany({
+    data: [
+      { warehouseId: bomWarehouse.id, productId: serverProduct.id, quantityOnHand: 5, quantityReserved: 0 },
+      { warehouseId: delWarehouse.id, productId: serverProduct.id, quantityOnHand: 3, quantityReserved: 0 },
+      { warehouseId: blrWarehouse.id, productId: serverProduct.id, quantityOnHand: 0, quantityReserved: 0 },
+
+      // Network Appliance (prod_network_02): BOM-01=2, DEL-02=8, BLR-03=10
+      { warehouseId: bomWarehouse.id, productId: networkProduct.id, quantityOnHand: 2, quantityReserved: 0 },
+      { warehouseId: delWarehouse.id, productId: networkProduct.id, quantityOnHand: 8, quantityReserved: 0 },
+      { warehouseId: blrWarehouse.id, productId: networkProduct.id, quantityOnHand: 10, quantityReserved: 0 },
+
+      // Implementation Services (prod_service_01): BOM-01=100 (Digital/service stock)
+      { warehouseId: bomWarehouse.id, productId: serviceProduct.id, quantityOnHand: 100, quantityReserved: 0 },
+
+      // Premium Support (prod_support_02): BOM-01=100
+      { warehouseId: bomWarehouse.id, productId: supportProduct.id, quantityOnHand: 100, quantityReserved: 0 },
+
+      // Analytics Suite (prod_analytics_01): BLR-03=15
+      { warehouseId: blrWarehouse.id, productId: analyticsProduct.id, quantityOnHand: 15, quantityReserved: 0 },
+
+      // Extended Warranty (prod_warranty_01): BOM-01=50
+      { warehouseId: bomWarehouse.id, productId: warrantyProduct.id, quantityOnHand: 50, quantityReserved: 0 },
+    ],
+  });
+
   console.log('Seed completed successfully!');
-  console.log(`Seeded: 3 Customer Tiers, 3 Customers, 3 Product Categories, 6 Products, 2 Users (${salesRep.name}, ${salesManager.name})`);
+  console.log(`Seeded: 3 Customer Tiers, 3 Customers, 3 Product Categories, 6 Products, 2 Users (${salesRep.name}, ${salesManager.name}), 3 Warehouses (BOM-01, DEL-02, BLR-03)`);
 }
 
 main()
