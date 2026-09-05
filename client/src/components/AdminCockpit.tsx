@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { apiClient } from '../services/api';
+import { OperatorAdminCard } from './Admin/OperatorAdminCard';
 import {
   CustomerDTO,
   CustomerTierDTO,
@@ -29,7 +30,7 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
   currentRole,
   onMasterDataChanged,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'products' | 'tiers' | 'customers' | 'categories'>('products');
+  const [activeSubTab, setActiveSubTab] = useState<'operators' | 'products' | 'tiers' | 'customers' | 'categories'>('operators');
   
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [tiers, setTiers] = useState<CustomerTierDTO[]>([]);
@@ -342,7 +343,20 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
       )}
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('operators')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeSubTab === 'operators'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          1. User Accounts & Operators
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveSubTab('products')}
@@ -353,7 +367,7 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
           }`}
         >
           <Package className="w-4 h-4" />
-          1. Products ({products.length})
+          2. Products ({products.length})
         </button>
 
         <button
@@ -361,12 +375,12 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
           onClick={() => setActiveSubTab('tiers')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
             activeSubTab === 'tiers'
-              ? 'bg-purple-600 text-white shadow-md'
+              ? 'bg-indigo-600 text-white shadow-md'
               : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
           }`}
         >
           <Award className="w-4 h-4" />
-          2. Customer Tiers & Ceilings ({tiers.length})
+          3. Customer Tiers & Ceilings ({tiers.length})
         </button>
 
         <button
@@ -379,7 +393,7 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
           }`}
         >
           <Users className="w-4 h-4" />
-          3. Customers ({customers.length})
+          4. Customers ({customers.length})
         </button>
 
         <button
@@ -392,9 +406,14 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
           }`}
         >
           <Tags className="w-4 h-4" />
-          4. Categories ({categories.length})
+          5. Categories ({categories.length})
         </button>
       </div>
+
+      {/* Sub-Tab 0: Operators */}
+      {activeSubTab === 'operators' && (
+        <OperatorAdminCard currentRole={currentRole} />
+      )}
 
       {/* Sub-Tab 1: Products */}
       {activeSubTab === 'products' && (

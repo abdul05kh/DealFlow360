@@ -448,3 +448,57 @@ export interface RespondNegotiationPayloadDTO {
   managerReason?: string;
   customerResponseNote?: string;
 }
+
+/** Operator Management & Work Queue DTOs */
+
+export interface OperatorDTO {
+  id: string;
+  firebaseUid?: string | null;
+  name: string;
+  email: string;
+  role: RealUserRole;
+  isActive: boolean;
+  customerId?: string | null;
+  quoteCount?: number;
+}
+
+export interface CreateOperatorPayloadDTO {
+  name: string;
+  email: string;
+  password?: string;
+  role: RealUserRole;
+  customerId?: string;
+}
+
+export interface UpdateOperatorPayloadDTO {
+  name?: string;
+  role?: RealUserRole;
+  isActive?: boolean;
+  customerId?: string;
+}
+
+export interface OperatorCustomerRequestDTO {
+  id: string;
+  quoteId: string;
+  quoteNumber: string;
+  customerId: string;
+  customerName: string;
+  round: number;
+  status: string;
+  customerNote?: string | null;
+  createdAt: string;
+  submittedByUserId?: string | null;
+  quoteStatus: string;
+  riskLevel: string;
+  riskScore: number;
+  totalOfferedGross: number;
+  totalRequestedDiscount: number;
+  lines: Array<{
+    quoteLineId: string;
+    productName: string;
+    sku: string;
+    offeredDiscountPercent: number;
+    requestedDiscountPercent: number;
+    customerNote?: string | null;
+  }>;
+}

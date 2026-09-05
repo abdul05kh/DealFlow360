@@ -121,6 +121,12 @@ export const loginUser = async (input: LoginInput): Promise<AuthResponse> => {
     throw error;
   }
 
+  if (user.isActive === false) {
+    const error: any = new Error('Account is deactivated. Contact System Administrator.');
+    error.statusCode = 401;
+    throw error;
+  }
+
   const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
   if (!isPasswordValid) {
     const error: any = new Error('Invalid email or password');
@@ -150,9 +156,9 @@ export const getUserById = async (userId: string): Promise<SafeUser> => {
     where: { id: userId },
   });
 
-  if (!user) {
-    const error: any = new Error('User not found');
-    error.statusCode = 404;
+  if (!user || user.isActive === false) {
+    const error: any = new Error('User account is deactivated or invalid');
+    error.statusCode = 401;
     throw error;
   }
 

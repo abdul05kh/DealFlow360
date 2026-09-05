@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express from 'express';
 import { config } from './config/index';
+import { adminRouter } from './routes/adminRoutes';
+import { operatorRouter } from './routes/operatorRoutes';
 import { authRouter } from './routes/authRoutes';
 import { customerRouter } from './routes/customerRoutes';
 import { fulfillmentRouter } from './routes/fulfillmentRoutes';
@@ -16,6 +18,8 @@ app.use(express.json());
 // API Routes
 app.use('/api/v1', healthRouter);
 app.use('/api/v1', authRouter);
+app.use('/api/v1', adminRouter);
+app.use('/api/v1', operatorRouter);
 app.use('/api/v1', masterDataRouter);
 app.use('/api/v1', fulfillmentRouter);
 app.use('/api/v1/quotes', quoteRouter);

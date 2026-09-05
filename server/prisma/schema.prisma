@@ -57,10 +57,12 @@ model Product {
 
 model User {
   id                    String             @id @default(uuid())
+  firebaseUid           String?            @unique
   name                  String
   email                 String             @unique
   passwordHash          String             @default("")
   role                  String
+  isActive              Boolean            @default(true)
   customerId            String?
   customer              Customer?          @relation(fields: [customerId], references: [id])
   quotesCreated         Quote[]            @relation("QuotesCreated")

@@ -82,10 +82,10 @@ authRouter.get(
       const user = await getUserById(req.user.id);
       res.status(200).json({ user });
     } catch (err: any) {
-      if (err.statusCode === 404) {
-        res.status(404).json({
-          error: 'NotFound',
-          message: 'User identity not found',
+      if (err.statusCode === 401 || err.statusCode === 404) {
+        res.status(401).json({
+          error: 'Unauthorized',
+          message: 'User account is deactivated or invalid',
         });
         return;
       }

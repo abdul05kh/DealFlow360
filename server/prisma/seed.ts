@@ -9,6 +9,8 @@ async function main() {
 
   // 1. Clean existing records
   await prisma.auditEvent.deleteMany();
+  await prisma.quoteNegotiationLine.deleteMany();
+  await prisma.quoteNegotiation.deleteMany();
   await prisma.fulfillmentItem.deleteMany();
   await prisma.fulfillmentPlan.deleteMany();
   await prisma.approvalRequest.deleteMany();
@@ -245,51 +247,61 @@ async function main() {
   const salesRep = await prisma.user.create({
     data: {
       id: 'rep_1',
+      firebaseUid: 'uid_rep_1',
       name: 'Alex Sales Rep',
       email: 'salesrep@example.com',
       passwordHash: defaultPasswordHash,
       role: 'SALES_REP',
+      isActive: true,
     },
   });
 
   const salesManager = await prisma.user.create({
     data: {
       id: 'mgr_1',
+      firebaseUid: 'uid_mgr_1',
       name: 'Morgan Sales Manager',
       email: 'salesmanager@example.com',
       passwordHash: defaultPasswordHash,
       role: 'SALES_MANAGER',
+      isActive: true,
     },
   });
 
   const opsManager = await prisma.user.create({
     data: {
       id: 'ops_1',
+      firebaseUid: 'uid_ops_1',
       name: 'Sam Operations Manager',
       email: 'operations@example.com',
       passwordHash: defaultPasswordHash,
       role: 'OPERATIONS_MANAGER',
+      isActive: true,
     },
   });
 
   const adminUser = await prisma.user.create({
     data: {
       id: 'admin_1',
+      firebaseUid: 'uid_admin_1',
       name: 'System Admin',
       email: 'admin@example.com',
       passwordHash: defaultPasswordHash,
       role: 'ADMIN',
+      isActive: true,
     },
   });
 
   const customerUser = await prisma.user.create({
     data: {
       id: 'cust_user_1',
+      firebaseUid: 'uid_cust_user_1',
       name: 'Acme Customer User',
       email: 'customer@example.com',
       passwordHash: defaultPasswordHash,
       role: 'CUSTOMER',
       customerId: acme.id,
+      isActive: true,
     },
   });
 

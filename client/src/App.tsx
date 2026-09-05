@@ -12,6 +12,8 @@ import {
   LoginModal,
   AdminCockpit,
   CustomerPortalView,
+  LoginView,
+  CustomerRequestsQueue,
 } from './components';
 import { useQuoteGovernance } from './hooks/useQuoteGovernance';
 import {
@@ -58,12 +60,15 @@ export default function App() {
     refreshMasterData,
   } = useQuoteGovernance();
 
-  const [activeTab, setActiveTab] = useState<'governance' | 'fulfillment' | 'admin' | 'customer'>('governance');
+  const [activeTab, setActiveTab] = useState<'governance' | 'requests' | 'fulfillment' | 'admin' | 'customer'>('governance');
   const [approvalReason, setApprovalReason] = useState<string>('');
+  const [isDedicatedLoginActive, setIsDedicatedLoginActive] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (currentRole === 'CUSTOMER' && activeTab !== 'customer') {
       setActiveTab('customer');
+    } else if (currentRole !== 'CUSTOMER' && activeTab === 'customer') {
+      setActiveTab('governance');
     }
   }, [currentRole]);
 
@@ -92,9 +97,25 @@ export default function App() {
   const isApprovedQuote =
     savedQuote && (savedQuote.status === 'APPROVED' || savedQuote.status === 'AUTO_APPROVED');
 
+  if (isDedicatedLoginActive) {
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          handleAuthSuccess(user);
+          setIsDedicatedLoginActive(false);
+          if (user.role === 'CUSTOMER') {
+            setActiveTab('customer');
+          } else {
+            setActiveTab('governance');
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
-      {/* 1. Header with View Tabs, Persona Switcher & Real JWT Auth Modal */}
+      {/* 1. Header with View Tabs, Persona Switcher & Real Auth Controls */}
       <Header
         currentRole={currentRole}
         onRoleChange={setRole}
@@ -102,7 +123,8 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         authUser={authUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={() => setIsDedicatedLoginActive(true)}
+        onLogout={handleLogout}
       />
 
       <LoginModal
@@ -115,13 +137,15 @@ export default function App() {
 
       {/* 2. Main Content Container */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Quick Demo Preset Bar */}
-        <QuickDemoPresetBar
-          customers={customers}
-          products={products}
-          onApplyPreset={applyPreset}
-          disabled={isSubmitting}
-        />
+        {/* Quick Demo Preset Bar (Only shown for operators on Governance view) */}
+        {currentRole !== 'CUSTOMER' && activeTab === 'governance' && (
+          <QuickDemoPresetBar
+            customers={customers}
+            products={products}
+            onApplyPreset={applyPreset}
+            disabled={isSubmitting}
+          />
+        )}
 
         {/* Global Action / Error Messages */}
         {evaluationError && (
@@ -145,7 +169,7 @@ export default function App() {
         )}
 
         {/* Saved Quote Banner */}
-        {savedQuote && (
+        {savedQuote && currentRole !== 'CUSTOMER' && (
           <div className="bg-blue-950/40 border border-blue-800/60 p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-3">
               <div className="bg-blue-600 text-white p-2 rounded-lg">
@@ -274,7 +298,7 @@ export default function App() {
                           className="flex items-center gap-1 font-bold text-purple-300 hover:text-white underline underline-offset-2 ml-2"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          Switch to Manager Demo Persona
+                          Switch to Manager Persona
                         </button>
                       </div>
                     )}
@@ -343,6 +367,8 @@ export default function App() {
               <AuditTrailDrawer savedQuote={savedQuote} />
             </div>
           </div>
+        ) : activeTab === 'requests' ? (
+          <CustomerRequestsQueue currentRole={currentRole} />
         ) : activeTab === 'fulfillment' ? (
           <FulfillmentCockpit
             currentRole={currentRole}

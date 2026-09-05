@@ -24,6 +24,7 @@ describe('P0-1 Real Authentication & Authorization Security Tests', () => {
             'hacker.ops@example.com',
             'cust.noid@example.com',
             'cust.valid@example.com',
+            'deactivated.op@example.com',
           ],
         },
       },
@@ -300,5 +301,101 @@ describe('P0-1 Real Authentication & Authorization Security Tests', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('Forbidden');
+  });
+
+  // 15. Admin Operator Management API Security
+  it('15. Admin Operator Management (/api/v1/admin/operators) denies non-ADMIN users with 403 Forbidden', async () => {
+    const repToken = jwt.sign(
+      { userId: 'rep_1', role: 'SALES_REP' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resRep = await request(app)
+      .get('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${repToken}`);
+
+    expect(resRep.status).toBe(403);
+
+    const adminToken = jwt.sign(
+      { userId: 'admin_1', role: 'ADMIN' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resAdmin = await request(app)
+      .get('/api/v1/admin/operators')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(resAdmin.status).toBe(200);
+    expect(Array.isArray(resAdmin.body)).toBe(true);
+  });
+
+  // 16. Soft-Deactivated User Security Rejection
+  it('16. Deactivated user (isActive = false) is rejected with 401 Unauthorized', async () => {
+    const deactEmail = 'deactivated.op@example.com';
+    const passwordHash = await bcrypt.hash('Password123!', 10);
+    const deactivatedUser = await prisma.user.create({
+      data: {
+        name: 'Deactivated Op',
+        email: deactEmail,
+        passwordHash,
+        role: 'SALES_REP',
+        isActive: false,
+      },
+    });
+
+    try {
+      // Login attempt with deactivated account fails with 401 Unauthorized
+      const loginRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: deactEmail, password: 'Password123!' });
+
+      expect(loginRes.status).toBe(401);
+      expect(loginRes.body.message).toBe('Invalid email or password');
+
+      // Request attempt with valid JWT for deactivated userId
+      const token = jwt.sign(
+        { userId: deactivatedUser.id, role: 'SALES_REP' },
+        config.jwtSecret,
+        { expiresIn: '1h' }
+      );
+
+      const meRes = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(meRes.status).toBe(401);
+    } finally {
+      await prisma.user.delete({ where: { id: deactivatedUser.id } });
+    }
+  });
+
+  // 17. Scoped Operator Customer-Request Queue Security
+  it('17. Customer-Request Work Queue (/api/v1/operator/customer-requests) denies CUSTOMER and allows OPERATOR', async () => {
+    const custToken = jwt.sign(
+      { userId: 'cust_user_1', role: 'CUSTOMER', customerId: 'cust_1' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resCust = await request(app)
+      .get('/api/v1/operator/customer-requests')
+      .set('Authorization', `Bearer ${custToken}`);
+
+    expect(resCust.status).toBe(403);
+
+    const mgrToken = jwt.sign(
+      { userId: 'mgr_1', role: 'SALES_MANAGER' },
+      config.jwtSecret,
+      { expiresIn: '1h' }
+    );
+
+    const resMgr = await request(app)
+      .get('/api/v1/operator/customer-requests')
+      .set('Authorization', `Bearer ${mgrToken}`);
+
+    expect(resMgr.status).toBe(200);
+    expect(Array.isArray(resMgr.body)).toBe(true);
   });
 });

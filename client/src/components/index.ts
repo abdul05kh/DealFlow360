@@ -13,3 +13,6 @@ export { FulfillmentAuditTrailCard } from './FulfillmentAuditTrailCard';
 export { LoginModal } from './LoginModal';
 export { AdminCockpit } from './AdminCockpit';
 export { CustomerPortalView } from './CustomerPortal/CustomerPortalView';
+export { LoginView } from './Auth/LoginView';
+export { OperatorAdminCard } from './Admin/OperatorAdminCard';
+export { CustomerRequestsQueue } from './Operator/CustomerRequestsQueue';

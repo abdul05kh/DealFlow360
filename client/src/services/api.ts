@@ -4,6 +4,7 @@ import {
   AuthUserDTO,
   CreateCustomerPayloadDTO,
   CreateCustomerTierPayloadDTO,
+  CreateOperatorPayloadDTO,
   CreateProductCategoryPayloadDTO,
   CreateProductPayloadDTO,
   CustomerDTO,
@@ -17,6 +18,8 @@ import {
   FulfillmentPlanDTO,
   LoginPayloadDTO,
   ManualOverrideItemDTO,
+  OperatorCustomerRequestDTO,
+  OperatorDTO,
   ProductCategoryDTO,
   ProductDTO,
   RespondNegotiationPayloadDTO,
@@ -25,6 +28,7 @@ import {
   SubmitNegotiationPayloadDTO,
   UpdateCustomerPayloadDTO,
   UpdateCustomerTierPayloadDTO,
+  UpdateOperatorPayloadDTO,
   UpdateProductCategoryPayloadDTO,
   UpdateProductPayloadDTO,
   WarehouseDTO,
@@ -400,6 +404,50 @@ export class APIClient {
       }
     );
     return this.handleResponse<SavedQuoteDTO>(res);
+  }
+
+  /** Admin Operator Management Endpoints */
+
+  async getOperators(): Promise<OperatorDTO[]> {
+    const res = await fetch(`${API_BASE}/admin/operators`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<OperatorDTO[]>(res);
+  }
+
+  async createOperator(payload: CreateOperatorPayloadDTO): Promise<OperatorDTO> {
+    const res = await fetch(`${API_BASE}/admin/operators`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<OperatorDTO>(res);
+  }
+
+  async updateOperator(id: string, payload: UpdateOperatorPayloadDTO): Promise<OperatorDTO> {
+    const res = await fetch(`${API_BASE}/admin/operators/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse<OperatorDTO>(res);
+  }
+
+  async deactivateOperator(id: string): Promise<OperatorDTO> {
+    const res = await fetch(`${API_BASE}/admin/operators/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<OperatorDTO>(res);
+  }
+
+  /** Operator Customer-Requests Work Queue */
+
+  async getOperatorCustomerRequests(): Promise<OperatorCustomerRequestDTO[]> {
+    const res = await fetch(`${API_BASE}/operator/customer-requests`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<OperatorCustomerRequestDTO[]>(res);
   }
 }
 
