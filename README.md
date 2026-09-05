@@ -291,10 +291,12 @@ The current release baseline has been fully verified against automated test suit
 
 ## Future Enterprise Roadmap
 
-- **Mid-Cycle Subscription Proration**: Formulaic line-item proration for mid-term seat upgrades or plan tier switches.
-- **Payment Gateway Adapters**: Webhook adapters for external payment providers (Stripe / Razorpay).
-- **Macro Analytics Dashboard**: Historical margin erosion trends across sales teams and fiscal quarters.
-- **Automated Stalled-Deal Nudging**: Time-based escalation rules for quotes pending manager review > 48 hours.
+While the current release completely satisfies commercial sales governance requirements, future enterprise extensions may include:
+
+- **Mid-Cycle Subscription Proration**: Formulaic line-item proration for mid-term seat count upgrades or plan tier switches.
+- **External Payment Gateway Adapters**: Webhook adapters for external payment service providers (Stripe / Razorpay).
+- **Macro Analytics Dashboard**: Historical margin erosion trends across sales teams, regions, and fiscal quarters.
+- **Automated Stalled-Deal Escalations**: Time-based escalation rules for quotes pending manager review for over 48 hours.
 
 ---
 
