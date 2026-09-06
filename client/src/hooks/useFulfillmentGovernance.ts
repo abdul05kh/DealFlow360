@@ -48,9 +48,11 @@ export function useFulfillmentGovernance(activeQuote: SavedQuoteDTO | null) {
     try {
       const plan = await apiClient.getFulfillmentByQuoteId(quoteId);
       setPersistedPlan(plan);
+      return plan;
     } catch (err: any) {
-      // Not allocated yet is expected (404)
+      // Expected unallocated state or failure
       setPersistedPlan(null);
+      return null;
     }
   }, []);
 
@@ -63,10 +65,17 @@ export function useFulfillmentGovernance(activeQuote: SavedQuoteDTO | null) {
       return;
     }
 
-    // Try loading existing persisted plan first
-    loadPersistedPlan(activeQuote.id);
+    let isSubscribed = true;
 
-    // If quote is in APPROVED or AUTO_APPROVED status, evaluate simulation
+    // Load persisted plan for quotes that have reached allocated / downstream billing statuses
+    if (activeQuote.status === 'BILLING_CREATED') {
+      loadPersistedPlan(activeQuote.id);
+    } else {
+      // Unallocated quote (APPROVED / AUTO_APPROVED) starts with persistedPlan = null
+      setPersistedPlan(null);
+    }
+
+    // Evaluate live simulation for approved quotes
     if (activeQuote.status === 'APPROVED' || activeQuote.status === 'AUTO_APPROVED') {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -81,17 +90,25 @@ export function useFulfillmentGovernance(activeQuote: SavedQuoteDTO | null) {
       apiClient
         .evaluateFulfillment(activeQuote.id, controller.signal)
         .then((res) => {
-          setEvaluation(res);
-          setIsEvaluating(false);
+          if (isSubscribed) {
+            setEvaluation(res);
+            setIsEvaluating(false);
+          }
         })
         .catch((err: any) => {
           if (err.name === 'AbortError') return;
-          setEvaluationError(err.message || 'Fulfillment evaluation failed.');
-          setIsEvaluating(false);
+          if (isSubscribed) {
+            setEvaluationError(err.message || 'Fulfillment evaluation failed.');
+            setIsEvaluating(false);
+          }
         });
     } else {
       setEvaluation(null);
     }
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [activeQuote, loadPersistedPlan]);
 
   // Handler to set/toggle a manual override for a line item

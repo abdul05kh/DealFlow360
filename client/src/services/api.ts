@@ -389,10 +389,13 @@ export class APIClient {
     return this.handleResponse<FulfillmentPlanDTO>(res);
   }
 
-  async getFulfillmentByQuoteId(quoteId: string): Promise<FulfillmentPlanDTO> {
+  async getFulfillmentByQuoteId(quoteId: string): Promise<FulfillmentPlanDTO | null> {
     const res = await fetch(`${API_BASE}/fulfillment/quote/${encodeURIComponent(quoteId)}`, {
       headers: this.getHeaders(),
     });
+    if (res.status === 404) {
+      return null;
+    }
     return this.handleResponse<FulfillmentPlanDTO>(res);
   }
 

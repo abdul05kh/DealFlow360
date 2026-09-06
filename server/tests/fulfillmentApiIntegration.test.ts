@@ -321,4 +321,38 @@ describe('Flow B REST API & Fulfillment Integration Tests', () => {
     expect(res.body.details).toBeDefined();
     expect(Array.isArray(res.body.details)).toBe(true);
   });
+
+  // 15. Unallocated APPROVED quote handles 404 cleanly and permits simulation & allocation
+  it('15. Unallocated APPROVED quote returns 404 for fulfillment plan lookup, but evaluation succeeds', async () => {
+    const unallocatedQuoteRes = await request
+      .post('/api/v1/quotes')
+      .set('X-Demo-Role', 'SALES_REP')
+      .send({
+        customerId: 'cust_acme_101',
+        items: [{ productId: 'prod_server_01', quantity: 1, discountPercent: 10 }],
+      });
+    const unallocatedId = unallocatedQuoteRes.body.id;
+
+    await request
+      .post(`/api/v1/quotes/${unallocatedId}/approve`)
+      .set('X-Demo-Role', 'SALES_MANAGER')
+      .send({ reason: 'Approved for test 15' });
+
+    // GET fulfillment plan returns 404 before allocation
+    const planRes = await request
+      .get(`/api/v1/fulfillment/quote/${unallocatedId}`)
+      .set('X-Demo-Role', 'SALES_REP');
+
+    expect(planRes.status).toBe(404);
+    expect(planRes.body.error).toBe('NotFound');
+
+    // POST evaluation simulation succeeds
+    const evalRes = await request
+      .post('/api/v1/fulfillment/evaluate')
+      .set('X-Demo-Role', 'OPERATIONS_MANAGER')
+      .send({ quoteId: unallocatedId });
+
+    expect(evalRes.status).toBe(200);
+    expect(evalRes.body.evaluation.status).toBeDefined();
+  });
 });

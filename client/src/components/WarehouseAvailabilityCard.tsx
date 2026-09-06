@@ -1,17 +1,19 @@
 import React from 'react';
-import { Building2, PackageCheck, AlertCircle } from 'lucide-react';
+import { Building2, PackageCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { WarehouseDTO } from '../types/api';
 
 interface WarehouseAvailabilityCardProps {
   warehouses: WarehouseDTO[];
   isLoading: boolean;
   error: string | null;
+  onRefresh?: () => void;
 }
 
 export const WarehouseAvailabilityCard: React.FC<WarehouseAvailabilityCardProps> = ({
   warehouses,
   isLoading,
   error,
+  onRefresh,
 }) => {
   if (isLoading) {
     return (
@@ -52,8 +54,20 @@ export const WarehouseAvailabilityCard: React.FC<WarehouseAvailabilityCardProps>
             </p>
           </div>
         </div>
-        <div className="text-xs text-slate-400 font-mono">
-          {warehouses.length} Active Hubs
+        <div className="flex items-center gap-3">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Stock
+            </button>
+          )}
+          <div className="text-xs text-slate-400 font-mono">
+            {warehouses.length} Active Hubs
+          </div>
         </div>
       </div>
 

@@ -47,6 +47,7 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
     allocationError,
     allocateFulfillment,
     approvedDeals,
+    refreshWarehouses,
   } = useFulfillmentGovernance(activeQuote);
 
   const actionBarRef = React.useRef<HTMLDivElement>(null);
@@ -328,6 +329,7 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
         warehouses={warehouses}
         isLoading={isLoadingWarehouses}
         error={warehousesError}
+        onRefresh={refreshWarehouses}
       />
 
       {/* 5. Server Recommended Allocation & Shipment Splits */}
