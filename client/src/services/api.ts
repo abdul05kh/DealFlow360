@@ -21,6 +21,7 @@ import {
   InvoiceDTO,
   LoginPayloadDTO,
   ManualOverrideItemDTO,
+  ManagerApprovalHistoryDTO,
   ManagerApprovalRequestDTO,
   OperatorCustomerRequestDTO,
   OperatorDTO,
@@ -490,6 +491,20 @@ export class APIClient {
       headers: this.getHeaders(),
     });
     return this.handleResponse<ManagerApprovalRequestDTO[]>(res);
+  }
+
+  async getManagerApprovalHistory(): Promise<ManagerApprovalHistoryDTO[]> {
+    const res = await fetch(`${API_BASE}/operator/approval-history`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<ManagerApprovalHistoryDTO[]>(res);
+  }
+
+  async getApprovedDeals(): Promise<SavedQuoteDTO[]> {
+    const res = await fetch(`${API_BASE}/operator/approved-deals`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse<SavedQuoteDTO[]>(res);
   }
 
   /** Increment 4 — Hybrid Billing Endpoints */

@@ -427,6 +427,7 @@ export default function App() {
             currentRole={currentRole}
             activeQuote={savedQuote}
             onSwitchPersona={setRole}
+            onSelectQuote={setSavedQuote}
           />
         ) : activeTab === 'admin' ? (
           <AdminCockpit

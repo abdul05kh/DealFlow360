@@ -564,6 +564,42 @@ export interface ManagerApprovalRequestDTO {
   }>;
 }
 
+export interface ManagerApprovalHistoryDTO {
+  id: string;
+  quoteId: string;
+  quoteNumber: string;
+  decisionStatus: 'APPROVED' | 'REJECTED';
+  customerId: string;
+  customerName: string;
+  customerTier: string;
+  tierDiscountCeiling?: number;
+  salesRepId?: string;
+  salesRepName?: string;
+  actionedById?: string;
+  actionedByName?: string;
+  actionReason?: string;
+  actionedAt: string;
+  financials: {
+    grossRevenue: number;
+    discountAmount: number;
+    netRevenue: number;
+    riskLevel: string;
+    riskScore: number;
+  };
+  riskReasons?: string[];
+  lines: Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
+    discountPercent: number;
+    discountAmount: number;
+    netTotal: number;
+  }>;
+}
+
 /** Increment 4 — Hybrid Billing DTOs (Integer Minor Units) */
 export interface InvoiceLineDTO {
   id: string;

@@ -101,6 +101,37 @@ export const AdminCockpit: React.FC<AdminCockpitProps> = ({
 
   useEffect(() => {
     loadData();
+
+    let isCancelled = false;
+    let isRequestInFlight = false;
+
+    const intervalId = setInterval(async () => {
+      if (isCancelled || isRequestInFlight) return;
+      isRequestInFlight = true;
+      try {
+        const [prodRes, tierRes, custRes, catRes] = await Promise.all([
+          apiClient.getProducts(true),
+          apiClient.getCustomerTiers(true),
+          apiClient.getCustomers(true),
+          apiClient.getProductCategories(),
+        ]);
+        if (!isCancelled) {
+          setProducts(prodRes);
+          setTiers(tierRes);
+          setCustomers(custRes);
+          setCategories(catRes);
+        }
+      } catch (err) {
+        // Silent catch during admin background polling
+      } finally {
+        isRequestInFlight = false;
+      }
+    }, 5000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const handleCreateProduct = async (e: React.FormEvent) => {

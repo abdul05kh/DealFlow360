@@ -256,6 +256,39 @@ export function useQuoteGovernance() {
     }
   };
 
+  // Cross-browser status polling ONLY while active quote is PENDING_APPROVAL
+  useEffect(() => {
+    const savedQuoteId = savedQuote?.id;
+    const currentStatus = savedQuote?.status;
+
+    if (!savedQuoteId || currentStatus !== 'PENDING_APPROVAL') {
+      return;
+    }
+
+    let isCancelled = false;
+    let isRequestInFlight = false;
+
+    const intervalId = setInterval(async () => {
+      if (isCancelled || isRequestInFlight) return;
+      isRequestInFlight = true;
+      try {
+        const latest = await apiClient.getQuoteById(savedQuoteId);
+        if (!isCancelled && latest && latest.status !== currentStatus) {
+          setSavedQuote(latest);
+        }
+      } catch (err) {
+        // Silent catch during status polling to avoid intrusive error UI
+      } finally {
+        isRequestInFlight = false;
+      }
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [savedQuote?.id, savedQuote?.status]);
+
   // Load quote preset values
   const applyPreset = useCallback(
     (presetCustomerId: string, presetItems: QuoteItemInputDTO[]) => {

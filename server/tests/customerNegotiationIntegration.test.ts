@@ -468,5 +468,16 @@ describe('P0-4 Customer Negotiation Portal Integration & Security Tests', () => 
       .set('Authorization', `Bearer ${managerToken}`);
     expect(mgrQueueAfter.status).toBe(200);
     expect(mgrQueueAfter.body.some((item: any) => item.quoteId === quoteId)).toBe(false);
+
+    // Manager approval history endpoint returns the approved decision
+    const historyRes = await request(app)
+      .get('/api/v1/operator/approval-history')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(historyRes.status).toBe(200);
+    expect(Array.isArray(historyRes.body)).toBe(true);
+    const historyItem = historyRes.body.find((item: any) => item.quoteId === quoteId);
+    expect(historyItem).toBeDefined();
+    expect(historyItem.decisionStatus).toBe('APPROVED');
+    expect(historyItem.actionReason).toBe('Approved under manager approval queue test');
   });
 });

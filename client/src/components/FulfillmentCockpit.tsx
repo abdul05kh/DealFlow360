@@ -23,12 +23,14 @@ interface FulfillmentCockpitProps {
   currentRole: DemoRole;
   activeQuote: SavedQuoteDTO | null;
   onSwitchPersona: (role: DemoRole) => void;
+  onSelectQuote?: (quote: SavedQuoteDTO) => void;
 }
 
 export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
   currentRole,
   activeQuote,
   onSwitchPersona,
+  onSelectQuote,
 }) => {
   const {
     warehouses,
@@ -44,6 +46,7 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
     isAllocating,
     allocationError,
     allocateFulfillment,
+    approvedDeals,
   } = useFulfillmentGovernance(activeQuote);
 
   const actionBarRef = React.useRef<HTMLDivElement>(null);
@@ -58,16 +61,79 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
   const isSalesRep = currentRole === 'SALES_REP';
   const isOperationsOrManager = currentRole === 'OPERATIONS_MANAGER' || currentRole === 'SALES_MANAGER';
 
+  const renderApprovedDealsQueue = () => (
+    <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center gap-2">
+          <Truck className="w-5 h-5 text-emerald-400" />
+          <h3 className="text-sm font-bold text-white">Actionable Approved Deals ({approvedDeals.length})</h3>
+        </div>
+        <span className="text-xs text-slate-400 font-mono">
+          Synced with Server State • Realtime REST Poller Active
+        </span>
+      </div>
+
+      {approvedDeals.length === 0 ? (
+        <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-800 rounded-lg">
+          No actionable approved deals currently waiting for fulfillment. When a Sales Manager approves a deal, it will automatically appear here.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {approvedDeals.map((deal) => {
+            const isSelected = activeQuote?.id === deal.id;
+            return (
+              <div
+                key={deal.id}
+                className={`p-4 rounded-xl border transition-all space-y-3 ${
+                  isSelected
+                    ? 'bg-emerald-950/40 border-emerald-500/60 shadow-lg shadow-emerald-950/40'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-purple-300">Quote #{deal.quoteNumber}</span>
+                  <span className="bg-emerald-950 text-emerald-300 border border-emerald-800/60 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {deal.status}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">{deal.customer.name}</div>
+                  <div className="text-xs text-slate-400">Net Total: ${(deal.netRevenue || deal.grossRevenue || 0).toLocaleString()}</div>
+                </div>
+                {onSelectQuote && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectQuote(deal)}
+                    className={`w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {isSelected ? 'Currently Selected' : 'Ready for Fulfillment →'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   if (!activeQuote) {
     return (
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-xl text-center space-y-3">
-        <div className="bg-blue-600/20 text-blue-400 p-3 rounded-full w-12 h-12 mx-auto flex items-center justify-center border border-blue-500/30">
-          <Truck className="w-6 h-6" />
+      <div className="space-y-6">
+        {renderApprovedDealsQueue()}
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-8 shadow-xl text-center space-y-3">
+          <div className="bg-blue-600/20 text-blue-400 p-3 rounded-full w-12 h-12 mx-auto flex items-center justify-center border border-blue-500/30">
+            <Truck className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-white">No Approved Quote Selected for Fulfillment</h2>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            Please select an approved deal from the queue above or create and approve a quote in the <span className="text-blue-400 font-semibold">Commercial Governance Cockpit</span> tab.
+          </p>
         </div>
-        <h2 className="text-base font-bold text-white">No Approved Quote Selected for Fulfillment</h2>
-        <p className="text-xs text-slate-400 max-w-md mx-auto">
-          Please create and approve a quote in the <span className="text-blue-400 font-semibold">Commercial Governance Cockpit</span> tab, or use an interactive demo preset to evaluate fulfillment allocation.
-        </p>
       </div>
     );
   }
@@ -106,6 +172,7 @@ export const FulfillmentCockpit: React.FC<FulfillmentCockpitProps> = ({
 
   return (
     <div className="space-y-6">
+      {renderApprovedDealsQueue()}
       {/* 1. Primary Status & High-Level Operational Metrics Banner */}
       <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">

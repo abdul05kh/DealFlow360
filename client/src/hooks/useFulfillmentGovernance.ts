@@ -131,6 +131,44 @@ export function useFulfillmentGovernance(activeQuote: SavedQuoteDTO | null) {
     }
   };
 
+  const [approvedDeals, setApprovedDeals] = useState<SavedQuoteDTO[]>([]);
+
+  const loadApprovedDeals = useCallback(async () => {
+    try {
+      const deals = await apiClient.getApprovedDeals();
+      setApprovedDeals(deals);
+    } catch {
+      // Silent catch
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApprovedDeals();
+
+    let isCancelled = false;
+    let isRequestInFlight = false;
+
+    const intervalId = setInterval(async () => {
+      if (isCancelled || isRequestInFlight) return;
+      isRequestInFlight = true;
+      try {
+        const deals = await apiClient.getApprovedDeals();
+        if (!isCancelled && deals) {
+          setApprovedDeals(deals);
+        }
+      } catch {
+        // Silent catch during status polling
+      } finally {
+        isRequestInFlight = false;
+      }
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [loadApprovedDeals]);
+
   return {
     warehouses,
     isLoadingWarehouses,
@@ -146,5 +184,7 @@ export function useFulfillmentGovernance(activeQuote: SavedQuoteDTO | null) {
     allocationError,
     allocateFulfillment,
     refreshWarehouses: loadWarehouses,
+    approvedDeals,
+    refreshApprovedDeals: loadApprovedDeals,
   };
 }

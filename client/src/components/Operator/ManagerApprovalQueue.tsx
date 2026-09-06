@@ -7,9 +7,11 @@ import {
   RefreshCw,
   ArrowUpRight,
   UserCheck,
+  History,
+  Clock,
 } from 'lucide-react';
 import { apiClient } from '../../services/api';
-import { ManagerApprovalRequestDTO, RealUserRole } from '../../types/api';
+import { ManagerApprovalHistoryDTO, ManagerApprovalRequestDTO, RealUserRole } from '../../types/api';
 
 interface ManagerApprovalQueueProps {
   currentRole: RealUserRole;
@@ -17,6 +19,7 @@ interface ManagerApprovalQueueProps {
 
 export const ManagerApprovalQueue: React.FC<ManagerApprovalQueueProps> = ({ currentRole }) => {
   const [requests, setRequests] = useState<ManagerApprovalRequestDTO[]>([]);
+  const [history, setHistory] = useState<ManagerApprovalHistoryDTO[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -30,8 +33,12 @@ export const ManagerApprovalQueue: React.FC<ManagerApprovalQueueProps> = ({ curr
     setIsLoading(true);
     setError(null);
     try {
-      const data = await apiClient.getManagerApprovalRequests();
-      setRequests(data);
+      const [pendingData, historyData] = await Promise.all([
+        apiClient.getManagerApprovalRequests(),
+        apiClient.getManagerApprovalHistory(),
+      ]);
+      setRequests(pendingData);
+      setHistory(historyData);
     } catch (err: any) {
       setError(err.message || 'Failed to load manager approval requests queue.');
     } finally {
@@ -108,7 +115,7 @@ export const ManagerApprovalQueue: React.FC<ManagerApprovalQueueProps> = ({ curr
   const isManagerOrAdmin = currentRole === 'SALES_MANAGER' || currentRole === 'ADMIN';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header Banner */}
       <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -164,125 +171,213 @@ export const ManagerApprovalQueue: React.FC<ManagerApprovalQueueProps> = ({ curr
         </div>
       )}
 
-      {/* Main Approval Requests List */}
-      {requests.length === 0 ? (
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
-          <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-          <h3 className="text-base font-bold text-white">Manager Queue Empty</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            There are currently no initial Sales Rep quotes awaiting commercial manager approval.
-          </p>
+      {/* SECTION 1: Pending Approvals */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-400" />
+            Pending Approvals
+          </h3>
+          <span className="text-xs text-slate-400">
+            Awaiting Manager Action ({requests.length})
+          </span>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {requests.map((req) => {
-            const riskLevel = req.financials?.riskLevel ?? 'LOW';
-            const riskScore = req.financials?.riskScore ?? 0;
 
-            return (
-              <div
-                key={req.id}
-                className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 shadow-lg space-y-4 transition-all"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-extrabold text-white">Quote #{req.quoteNumber}</span>
-                      <span className="bg-amber-950 text-amber-300 text-xs font-mono font-bold px-2.5 py-0.5 rounded border border-amber-800/60">
-                        {req.quoteStatus}
-                      </span>
-                      <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded ${
-                          riskLevel === 'HIGH'
-                            ? 'bg-red-950 text-red-400 border border-red-800'
-                            : riskLevel === 'MEDIUM'
-                            ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                            : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                        }`}
-                      >
-                        Risk: {riskLevel} (Score: {riskScore})
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
-                      <span>
-                        Company: <strong className="text-slate-200">{req.customerName}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Tier: <strong className="text-purple-300">{req.customerTier}</strong> ({req.tierDiscountCeiling}% Ceiling)
-                      </span>
-                      <span>•</span>
-                      <span>Sales Rep: <strong className="text-slate-200">{req.salesRepName}</strong></span>
-                      <span>•</span>
-                      <span>Submitted: {formatDate(req.createdAt)}</span>
-                    </div>
-                  </div>
+        {requests.length === 0 ? (
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+            <h4 className="text-sm font-bold text-white">Pending Queue Empty</h4>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              There are currently no initial Sales Rep quotes awaiting commercial manager approval.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {requests.map((req) => {
+              const riskLevel = req.financials?.riskLevel ?? 'LOW';
+              const riskScore = req.financials?.riskScore ?? 0;
 
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-xs text-slate-400">Net Revenue</div>
-                      <div className="text-sm font-mono font-bold text-emerald-400">
-                        {formatCurrency(req.financials?.netRevenue)}
+              return (
+                <div
+                  key={req.id}
+                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 shadow-lg space-y-4 transition-all"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-base font-extrabold text-white">Quote #{req.quoteNumber}</span>
+                        <span className="bg-amber-950 text-amber-300 text-xs font-mono font-bold px-2.5 py-0.5 rounded border border-amber-800/60 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {req.quoteStatus}
+                        </span>
+                        <span
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded ${
+                            riskLevel === 'HIGH'
+                              ? 'bg-red-950 text-red-400 border border-red-800'
+                              : riskLevel === 'MEDIUM'
+                              ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                              : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          }`}
+                        >
+                          Risk: {riskLevel} (Score: {riskScore})
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+                        <span>
+                          Company: <strong className="text-slate-200">{req.customerName}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Tier: <strong className="text-purple-300">{req.customerTier}</strong> ({req.tierDiscountCeiling}% Ceiling)
+                        </span>
+                        <span>•</span>
+                        <span>Sales Rep: <strong className="text-slate-200">{req.salesRepName}</strong></span>
+                        <span>•</span>
+                        <span>Submitted: {formatDate(req.createdAt)}</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedReq(req)}
-                      className="py-2 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <span>Review Deal</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
 
-                {/* Triggered Governance Violations */}
-                {req.riskReasons && req.riskReasons.length > 0 && (
-                  <div className="bg-amber-950/30 border border-amber-800/50 p-3 rounded-xl text-xs space-y-1">
-                    <div className="font-semibold text-amber-300 flex items-center gap-1.5">
-                      <ShieldAlert className="w-3.5 h-3.5" />
-                      Triggered Commercial Governance Warnings:
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400">Net Revenue</div>
+                        <div className="text-sm font-mono font-bold text-emerald-400">
+                          {formatCurrency(req.financials?.netRevenue)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReq(req)}
+                        className="py-2 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <span>Review Deal</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
                     </div>
-                    <ul className="list-disc list-inside text-slate-300 space-y-0.5">
-                      {req.riskReasons.map((reason, idx) => (
-                        <li key={idx}>{reason}</li>
-                      ))}
-                    </ul>
                   </div>
-                )}
 
-                {/* Line Item Table Summary */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 font-semibold">
-                        <th className="py-2 px-3">Product</th>
-                        <th className="py-2 px-3">SKU</th>
-                        <th className="py-2 px-3">Quantity</th>
-                        <th className="py-2 px-3">Unit Price</th>
-                        <th className="py-2 px-3">Discount %</th>
-                        <th className="py-2 px-3">Net Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {(req.lines || []).map((l, idx) => (
-                        <tr key={idx} className="hover:bg-slate-900/40">
-                          <td className="py-2 px-3 font-semibold text-white">{l.productName}</td>
-                          <td className="py-2 px-3 font-mono text-slate-400">{l.sku}</td>
-                          <td className="py-2 px-3 font-mono text-slate-200">{l.quantity}</td>
-                          <td className="py-2 px-3 font-mono text-slate-300">{formatCurrency(l.unitPrice)}</td>
-                          <td className="py-2 px-3 font-mono font-bold text-amber-400">{l.discountPercent}%</td>
-                          <td className="py-2 px-3 font-mono text-emerald-300">{formatCurrency(l.netTotal)}</td>
+                  {/* Triggered Governance Violations */}
+                  {req.riskReasons && req.riskReasons.length > 0 && (
+                    <div className="bg-amber-950/30 border border-amber-800/50 p-3 rounded-xl text-xs space-y-1">
+                      <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        Triggered Commercial Governance Warnings:
+                      </div>
+                      <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+                        {req.riskReasons.map((reason, idx) => (
+                          <li key={idx}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Line Item Table Summary */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 font-semibold">
+                          <th className="py-2 px-3">Product</th>
+                          <th className="py-2 px-3">SKU</th>
+                          <th className="py-2 px-3">Quantity</th>
+                          <th className="py-2 px-3">Unit Price</th>
+                          <th className="py-2 px-3">Discount %</th>
+                          <th className="py-2 px-3">Net Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {(req.lines || []).map((l, idx) => (
+                          <tr key={idx} className="hover:bg-slate-900/40">
+                            <td className="py-2 px-3 font-semibold text-white">{l.productName}</td>
+                            <td className="py-2 px-3 font-mono text-slate-400">{l.sku}</td>
+                            <td className="py-2 px-3 font-mono text-slate-200">{l.quantity}</td>
+                            <td className="py-2 px-3 font-mono text-slate-300">{formatCurrency(l.unitPrice)}</td>
+                            <td className="py-2 px-3 font-mono font-bold text-amber-400">{l.discountPercent}%</td>
+                            <td className="py-2 px-3 font-mono text-emerald-300">{formatCurrency(l.netTotal)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: Recent Decisions / Decision History */}
+      <div className="space-y-4 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <History className="w-4 h-4 text-purple-400" />
+            Recent Decisions & Approval History
+          </h3>
+          <span className="text-xs text-slate-400">
+            {history.length} Completed Historical Decisions
+          </span>
         </div>
-      )}
+
+        {history.length === 0 ? (
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 text-center text-xs text-slate-400">
+            No recently completed manager approval decisions recorded yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {history.map((item) => {
+              const isApproved = item.decisionStatus === 'APPROVED';
+
+              return (
+                <div
+                  key={item.id}
+                  className={`bg-slate-950/80 border p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs transition-all ${
+                    isApproved
+                      ? 'border-emerald-900/40 hover:border-emerald-800/60'
+                      : 'border-red-900/40 hover:border-red-800/60'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white">Quote #{item.quoteNumber}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 ${
+                          isApproved
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/80'
+                            : 'bg-red-950 text-red-300 border border-red-800/80'
+                        }`}
+                      >
+                        {isApproved ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            APPROVED
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3 text-red-400" />
+                            REJECTED
+                          </>
+                        )}
+                      </span>
+                      <span className="text-slate-400">Customer: <strong className="text-slate-200">{item.customerName}</strong> ({item.customerTier})</span>
+                    </div>
+
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span>Actioned by: <strong className="text-purple-300">{item.actionedByName}</strong></span>
+                      <span>•</span>
+                      <span>Date: {formatDate(item.actionedAt)}</span>
+                      <span>•</span>
+                      <span>Reason: <em className="text-slate-300">{item.actionReason}</em></span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-[11px] text-slate-400">Deal Revenue</div>
+                    <div className="font-mono font-bold text-emerald-400">{formatCurrency(item.financials?.netRevenue)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Detailed Review & Decision Modal */}
       {selectedReq && (

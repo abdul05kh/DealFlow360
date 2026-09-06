@@ -38,6 +38,38 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({ apiConne
     fetchQuotes();
   }, [apiConnected]);
 
+  // REST polling for Customer Portal lifecycle status synchronization
+  useEffect(() => {
+    let isCancelled = false;
+    let isRequestInFlight = false;
+
+    const intervalId = setInterval(async () => {
+      if (isCancelled || isRequestInFlight) return;
+      isRequestInFlight = true;
+      try {
+        const data = await apiClient.getCustomerQuotes();
+        if (!isCancelled && data) {
+          setQuotes(data);
+          if (selectedQuote) {
+            const updated = data.find((q) => q.id === selectedQuote.id);
+            if (updated && (updated.status !== selectedQuote.status || updated.lines.length !== selectedQuote.lines.length)) {
+              setSelectedQuote(updated);
+            }
+          }
+        }
+      } catch (err) {
+        // Silent catch during background polling
+      } finally {
+        isRequestInFlight = false;
+      }
+    }, 4000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [selectedQuote?.id, selectedQuote?.status]);
+
   const fetchQuotes = async () => {
     setLoading(true);
     setError(null);

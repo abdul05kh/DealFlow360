@@ -47,6 +47,36 @@ export const HybridBillingCard: React.FC<HybridBillingCardProps> = ({
     }
   }, [quoteId]);
 
+  // REST polling for invoice payment state synchronization across tabs
+  useEffect(() => {
+    if (!quoteId || summary?.invoice?.status !== 'ISSUED') {
+      return;
+    }
+
+    let isCancelled = false;
+    let isRequestInFlight = false;
+
+    const intervalId = setInterval(async () => {
+      if (isCancelled || isRequestInFlight) return;
+      isRequestInFlight = true;
+      try {
+        const updated = await apiClient.getBillingSummaryForQuote(quoteId);
+        if (!isCancelled && updated) {
+          setSummary(updated);
+        }
+      } catch (err) {
+        // Silent catch during status polling
+      } finally {
+        isRequestInFlight = false;
+      }
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [quoteId, summary?.invoice?.status]);
+
   const handleGenerateBilling = async () => {
     if (!quoteId) return;
     try {
